@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, Sparkles, CheckCircle2, ArrowRight, ShieldCheck, RefreshCw, Globe, Building2, Flame } from "lucide-react";
+import { X, CheckCircle2, ArrowRight, ShieldCheck, RefreshCw, Flame } from "lucide-react";
 import confetti from "canvas-confetti";
 
 interface SubmitAgencyModalProps {
@@ -38,7 +38,7 @@ export default function SubmitAgencyModal({ isOpen, onClose }: SubmitAgencyModal
           origin: { y: 0.6 },
           colors: ["#38bdf8", "#818cf8", "#f43f5e", "#fbbf24"],
         });
-      } catch (err) {
+      } catch {
         // Fallback
       }
     }, 700);
@@ -157,6 +157,24 @@ export default function SubmitAgencyModal({ isOpen, onClose }: SubmitAgencyModal
 
                 <div>
                   <label className="text-xs font-semibold uppercase text-slate-300 tracking-wider block mb-1">
+                    Agency Team Size
+                  </label>
+                  <select
+                    value={teamSize}
+                    onChange={(e) => setTeamSize(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-cyan-400 focus:outline-none text-sm text-white"
+                  >
+                    <option value="1-10 creators">1-10 creators (Boutique)</option>
+                    <option value="10-50">10-50 (Growth Studio)</option>
+                    <option value="50-250">50-250 (Mid-Scale)</option>
+                    <option value="250-1,000+">250-1,000+ (Global Network)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold uppercase text-slate-300 tracking-wider block mb-1">
                     Starting Monthly Retainer
                   </label>
                   <select
@@ -170,6 +188,20 @@ export default function SubmitAgencyModal({ isOpen, onClose }: SubmitAgencyModal
                     <option value="$10,000+ / mo">$10,000+ / mo</option>
                   </select>
                 </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase text-slate-300 tracking-wider block mb-1">
+                    Official Verification Email
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="contact@youragency.com"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-cyan-400 focus:outline-none text-sm text-white placeholder-slate-500"
+                  />
+                </div>
               </div>
 
               <div>
@@ -181,20 +213,6 @@ export default function SubmitAgencyModal({ isOpen, onClose }: SubmitAgencyModal
                   value={clients}
                   onChange={(e) => setClients(e.target.value)}
                   placeholder="e.g. Swiggy, Netflix, Gymshark, Nike, Fabletics"
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-cyan-400 focus:outline-none text-sm text-white placeholder-slate-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold uppercase text-slate-300 tracking-wider block mb-1">
-                  Official Verification Email
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="contact@youragency.com"
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-cyan-400 focus:outline-none text-sm text-white placeholder-slate-500"
                 />
               </div>
@@ -219,7 +237,7 @@ export default function SubmitAgencyModal({ isOpen, onClose }: SubmitAgencyModal
 
               <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400 pt-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Verified profiles receive the "Verified AF" badge and client inquiry routing.</span>
+                <span>Verified profiles receive the &ldquo;Verified AF&rdquo; badge and client inquiry routing.</span>
               </div>
             </form>
           </div>
@@ -246,3 +264,4 @@ export default function SubmitAgencyModal({ isOpen, onClose }: SubmitAgencyModal
     </div>
   );
 }
+

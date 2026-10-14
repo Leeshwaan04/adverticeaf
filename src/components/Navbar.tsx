@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Sparkles, Flame, Menu, X, ArrowRight, ShieldCheck } from "lucide-react";
+import { Sparkles, Flame, Menu, X, ArrowRight } from "lucide-react";
 
 interface NavbarProps {
   onOpenAudit: () => void;

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Flame, Sparkles, Copy, Check, RefreshCw, AlertTriangle, ArrowRight, Lightbulb, Zap } from "lucide-react";
+import { Flame, Sparkles, Copy, Check, RefreshCw, AlertTriangle, ArrowRight, Zap } from "lucide-react";
 import confetti from "canvas-confetti";
 
 interface AdRoasterProps {
@@ -116,7 +116,7 @@ export default function AdRoaster({ onOpenAudit }: AdRoasterProps) {
           },
           {
             type: "⚡ The 0.5s Pattern Interrupt",
-            hook: `“I spent $3,000 testing every major brand so you don't have to. Only one was actually worth it — and it wasn't the famous one.”`,
+            hook: `“I spent $3,000 testing every major brand so you don't have to. Only one was actually worth it, and it wasn't the famous one.”`,
             psychology: "High perceived value + unbiased authority positioning.",
             visualDirection: "Split screen comparing unboxing with honest facial reaction.",
           },
@@ -139,7 +139,7 @@ export default function AdRoaster({ onOpenAudit }: AdRoasterProps) {
           origin: { y: 0.7 },
           colors: ["#38bdf8", "#818cf8", "#f43f5e"],
         });
-      } catch (err) {
+      } catch {
         // Confetti fallback
       }
     }, 700);

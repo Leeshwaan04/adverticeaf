@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Agency } from "@/data/agencies";
-import { X, CheckCircle2, Star, ExternalLink, Globe, MapPin, Users, Calendar, DollarSign, Sparkles, MessageSquare, ArrowRight } from "lucide-react";
+import { X, CheckCircle2, Star, ExternalLink, Globe, MapPin, Users, Calendar, DollarSign, MessageSquare, ArrowRight } from "lucide-react";
 
 interface AgencyProfileModalProps {
   agency: Agency | null;
@@ -47,7 +47,7 @@ export default function AgencyProfileModal({ agency, onClose, onRequestQuote }: 
             {agency.name}
           </h3>
           <p className="text-sm font-medium text-cyan-300 mt-1">
-            "{agency.tagline}"
+            &ldquo;{agency.tagline}&rdquo;
           </p>
 
           <div className="flex items-center gap-3 mt-3">
@@ -184,3 +184,4 @@ export default function AgencyProfileModal({ agency, onClose, onRequestQuote }: 
     </div>
   );
 }
+

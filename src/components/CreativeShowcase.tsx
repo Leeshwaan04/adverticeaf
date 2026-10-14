@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Sparkles, Play, TrendingUp, Layers, Eye, Smartphone, Box, Zap } from "lucide-react";
+import { Sparkles, Play, TrendingUp, Layers, Smartphone, Box, Zap } from "lucide-react";
 
 const CREATIVE_ITEMS = [
   {
@@ -113,7 +113,7 @@ export default function CreativeShowcase() {
             Ads Engineered for the Modern Attention Span
           </h2>
           <p className="text-slate-300 text-base sm:text-lg">
-            We don't do boring corporate decks. We engineer formats that capture eyes, trigger algorithmic distribution, and drive cold hard cash.
+            We don&apos;t do boring corporate decks. We engineer formats that capture eyes, trigger algorithmic distribution, and drive cold hard cash.
           </p>
 
           {/* Filter Pills */}

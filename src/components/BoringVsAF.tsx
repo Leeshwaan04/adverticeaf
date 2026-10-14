@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { XCircle, CheckCircle2, TrendingDown, TrendingUp, Sparkles, Volume2, Video, Eye, ThumbsDown, Flame } from "lucide-react";
+import { XCircle, CheckCircle2, TrendingDown, TrendingUp, Sparkles, Volume2, Video, ThumbsDown, Flame } from "lucide-react";
 
 export default function BoringVsAF() {
   const [activeTab, setActiveTab] = useState<"boring" | "af">("af");
@@ -18,7 +18,7 @@ export default function BoringVsAF() {
             Why 90% of Paid Ads Burn Money
           </h2>
           <p className="text-slate-300 text-base sm:text-lg">
-            Traditional agencies still produce ads like it's 2014. Modern feeds require thumb-stopping psychological velocity.
+            Traditional agencies still produce ads like it&apos;s 2014. Modern feeds require thumb-stopping psychological velocity.
           </p>
 
           {/* Interactive Toggle Switch */}
@@ -74,12 +74,12 @@ export default function BoringVsAF() {
                 <div className="aspect-video w-full rounded-lg bg-gradient-to-br from-slate-800 to-slate-950 flex flex-col items-center justify-center p-6 text-center border border-white/5">
                   <Video className="w-10 h-10 text-slate-600 mb-2" />
                   <p className="text-xs text-slate-400 font-mono italic max-w-xs">
-                    "Stock footage of laughing office workers shaking hands in a sterile boardroom."
+                    &ldquo;Stock footage of laughing office workers shaking hands in a sterile boardroom.&rdquo;
                   </p>
                 </div>
                 <div className="mt-4 space-y-1">
                   <div className="text-xs font-semibold text-slate-300">
-                    Headline: "Synergize your operational workflows with our enterprise solutions."
+                    Headline: &ldquo;Synergize your operational workflows with our enterprise solutions.&rdquo;
                   </div>
                   <div className="text-[11px] text-slate-500 font-mono">
                     Audio: Generic elevator acoustic guitar strumming
@@ -146,12 +146,12 @@ export default function BoringVsAF() {
                   </div>
                   <Flame className="w-10 h-10 text-cyan-400 mb-2 animate-bounce" />
                   <p className="text-xs text-cyan-200 font-mono font-medium max-w-xs">
-                    "Visceral POV pattern-interrupt, kinetic subtitle bursts, rapid 3D CGI product reveal."
+                    &ldquo;Visceral POV pattern-interrupt, kinetic subtitle bursts, rapid 3D CGI product reveal.&rdquo;
                   </p>
                 </div>
                 <div className="mt-4 space-y-1">
                   <div className="text-xs font-semibold text-white">
-                    Headline: "The $40 mistake 92% of founders make before noon (and how we fixed it in 3 clicks)."
+                    Headline: &ldquo;The $40 mistake 92% of founders make before noon (and how we fixed it in 3 clicks).&rdquo;
                   </div>
                   <div className="text-[11px] text-cyan-300 font-mono flex items-center gap-1">
                     <Volume2 className="w-3.5 h-3.5 text-cyan-400" />

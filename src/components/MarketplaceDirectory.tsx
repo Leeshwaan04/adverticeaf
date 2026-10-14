@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { Agency, GLOBAL_AGENCIES, DIRECTORY_METRICS } from "@/data/agencies";
-import { Search, MapPin, Star, CheckCircle2, Globe, Building2, Flame, Sparkles, Filter, ExternalLink, ArrowRight, ShieldCheck, PlusCircle } from "lucide-react";
+import { Search, MapPin, Star, CheckCircle2, Globe, Filter, ArrowRight, PlusCircle } from "lucide-react";
 
 interface MarketplaceDirectoryProps {
   onSelectAgency: (agency: Agency) => void;
@@ -224,7 +224,7 @@ export default function MarketplaceDirectory({
                     </span>
                   </h3>
                   <p className="text-xs text-cyan-300 font-medium mb-3 italic">
-                    "{agency.tagline}"
+                    &ldquo;{agency.tagline}&rdquo;
                   </p>
 
                   {/* Description */}
@@ -356,3 +356,4 @@ export default function MarketplaceDirectory({
     </section>
   );
 }
+

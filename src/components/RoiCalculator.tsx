@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Calculator, TrendingUp, Sparkles, DollarSign, ArrowRight, ShieldCheck, Zap } from "lucide-react";
+import { Calculator, ArrowRight, ShieldCheck, Zap } from "lucide-react";
 
 interface RoiCalculatorProps {
   onOpenAudit: () => void;

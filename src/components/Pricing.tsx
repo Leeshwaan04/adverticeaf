@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Check, Sparkles, Flame, ShieldAlert, ArrowRight, Zap } from "lucide-react";
+import { Check, Flame, ArrowRight, Zap } from "lucide-react";
 
 interface PricingProps {
   onSelectPlan: (planName: string) => void;

@@ -39,7 +39,7 @@ export default function LeadModal({ isOpen, onClose, prefill }: LeadModalProps) 
           origin: { y: 0.6 },
           colors: ["#38bdf8", "#818cf8", "#34d399", "#f43f5e"],
         });
-      } catch (err) {
+      } catch {
         // Fallback
       }
     }, 800);
@@ -67,7 +67,7 @@ export default function LeadModal({ isOpen, onClose, prefill }: LeadModalProps) 
                 Turn Your Ad Account Into A Customer Printer
               </h3>
               <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                Tell us about your brand. We'll tear down your existing creatives and pitch 3 high-probability angles on our call.
+                Tell us about your brand. We&apos;ll tear down your existing creatives and pitch 3 high-probability angles on our call.
               </p>
             </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Sparkles, ArrowRight, Play, TrendingUp, Zap, Flame, Eye, CheckCircle2 } from "lucide-react";
+import { Sparkles, ArrowRight, TrendingUp, Zap, Flame, Eye, CheckCircle2 } from "lucide-react";
 
 interface HeroProps {
   onOpenAudit: () => void;

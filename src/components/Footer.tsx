@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Flame, Sparkles, Send, ShieldCheck, Heart } from "lucide-react";
+import { Send } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -61,7 +61,7 @@ export default function Footer() {
           {/* Column 3: Newsletter */}
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-4">
-              "The Viral AF Drop"
+              &ldquo;The Viral AF Drop&rdquo;
             </h4>
             <p className="text-xs text-slate-400 mb-3 leading-relaxed">
               Weekly teardowns of top 0.1% ads currently printing money on TikTok & Meta.
