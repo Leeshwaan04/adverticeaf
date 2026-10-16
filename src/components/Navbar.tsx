@@ -1,176 +1,103 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Sparkles, Flame, Menu, X, ArrowRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { Menu, X } from "lucide-react";
+import Logo from "@/components/Logo";
+import Button from "@/components/ui/Button";
+import { useModals } from "@/components/ModalProvider";
+import { NAV_LINKS } from "@/lib/site";
 
-interface NavbarProps {
-  onOpenAudit: () => void;
-  onOpenSubmitAgency?: () => void;
-}
-
-export default function Navbar({ onOpenAudit, onOpenSubmitAgency }: NavbarProps) {
+export default function Navbar() {
+  const { openContact } = useModals();
   const [scrolled, setScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Escape closes the mobile menu and returns focus to its button.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        menuButton.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-[#030712]/80 backdrop-blur-md border-b border-white/10 shadow-lg shadow-black/40 py-3"
-          : "bg-transparent py-5"
+      className={`fixed inset-x-0 top-0 z-40 border-b transition-colors duration-200 ${
+        scrolled || open ? "border-line bg-ink/90 backdrop-blur-md" : "border-transparent bg-transparent"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between">
-          {/* Logo */}
-          <a href="#" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 via-sky-500 to-indigo-600 p-[1px] shadow-lg shadow-cyan-500/20 group-hover:shadow-cyan-400/40 transition-all duration-300">
-              <div className="w-full h-full bg-[#030712] rounded-[11px] flex items-center justify-center">
-                <span className="text-xl font-black bg-gradient-to-r from-cyan-300 via-sky-200 to-white bg-clip-text text-transparent">
-                  A
-                </span>
-                <span className="text-sm font-black text-cyan-400 -ml-0.5">❄</span>
-              </div>
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold tracking-tight text-xl text-white">
-                  advertice<span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-sky-300">af</span>
-                </span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                  Global
-                </span>
-              </div>
-              <span className="text-[10px] text-slate-400 tracking-wider uppercase font-semibold hidden sm:inline-block">
-                Agency Directory • Creative Engine
-              </span>
-            </div>
-          </a>
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <Logo />
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-slate-300">
-            <a
-              href="#marketplace"
-              className="text-cyan-300 hover:text-white font-bold transition-colors flex items-center gap-1.5 py-1"
+        <nav aria-label="Primary" className="hidden items-center gap-1 lg:flex">
+          {NAV_LINKS.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className="rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-fg"
             >
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-              <span>38k+ Agency Directory</span>
-            </a>
-            <a
-              href="#roaster"
-              className="hover:text-cyan-400 transition-colors flex items-center gap-1.5 py-1"
-            >
-              <Flame className="w-4 h-4 text-amber-400 animate-pulse" />
-              <span>Roast My Ad</span>
-            </a>
-            <a href="#showcase" className="hover:text-cyan-400 transition-colors py-1">
-              Creative Lab
-            </a>
-            <a href="#comparison" className="hover:text-cyan-400 transition-colors py-1">
-              Why Us
-            </a>
-            <a href="#calculator" className="hover:text-cyan-400 transition-colors py-1">
-              ROI Simulator
-            </a>
-          </nav>
+              {l.label}
+            </Link>
+          ))}
+        </nav>
 
-          {/* Action CTAs */}
-          <div className="hidden sm:flex items-center gap-3">
-            {onOpenSubmitAgency && (
-              <button
-                onClick={onOpenSubmitAgency}
-                className="text-xs font-semibold px-3 py-2 rounded-xl text-slate-300 hover:text-cyan-300 border border-white/10 hover:border-cyan-500/30 transition-all"
-              >
-                + List Agency
-              </button>
-            )}
-            <button
-              onClick={onOpenAudit}
-              className="relative inline-flex items-center justify-center p-0.5 overflow-hidden text-sm font-semibold rounded-xl group bg-gradient-to-r from-cyan-500 via-sky-400 to-indigo-500 hover:text-white shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/35 transition-all duration-300 active:scale-95"
-            >
-              <span className="relative px-4 py-2 transition-all ease-in duration-200 bg-[#070d1d] rounded-[10px] group-hover:bg-opacity-0 flex items-center gap-2 text-cyan-300 group-hover:text-white">
-                <Sparkles className="w-4 h-4 text-cyan-400 group-hover:text-white" />
-                <span>Get Free Ad Audit</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-              </span>
-            </button>
-          </div>
-
-          {/* Mobile menu button */}
-          <div className="flex md:hidden items-center">
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white"
-              aria-label="Toggle menu"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={() => openContact()} className="max-sm:hidden">
+            Get in touch
+          </Button>
+          <button
+            ref={menuButton}
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            aria-controls="mobile-menu"
+            aria-label={open ? "Close menu" : "Open menu"}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-line-strong text-fg lg:hidden"
+          >
+            {open ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
+          </button>
         </div>
       </div>
 
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-[#070d1d]/95 backdrop-blur-xl border-b border-white/10 px-4 pt-4 pb-6 space-y-4">
-          <nav className="flex flex-col space-y-3 text-base font-medium text-slate-200">
-            <a
-              href="#roaster"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 text-cyan-400 py-2 border-b border-slate-800/60"
-            >
-              <Flame className="w-4 h-4 text-amber-400" />
-              <span>Roast My Ad (Free Tool)</span>
-            </a>
-            <a
-              href="#showcase"
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-2 border-b border-slate-800/60 hover:text-cyan-400"
-            >
-              Creative Lab & Formats
-            </a>
-            <a
-              href="#comparison"
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-2 border-b border-slate-800/60 hover:text-cyan-400"
-            >
-              Boring Ads vs AdverticeAF
-            </a>
-            <a
-              href="#calculator"
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-2 border-b border-slate-800/60 hover:text-cyan-400"
-            >
-              ROI Simulator
-            </a>
-            <a
-              href="#pricing"
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-2 hover:text-cyan-400"
-            >
-              Plans & Pricing
-            </a>
-          </nav>
-          <div className="pt-2">
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onOpenAudit();
-              }}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 via-sky-400 to-indigo-600 font-bold text-white text-sm shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>Get Free Ad Audit</span>
-            </button>
-          </div>
-        </div>
+      {open && (
+        <nav id="mobile-menu" aria-label="Mobile" className="border-t border-line bg-ink px-4 pb-6 pt-3 lg:hidden">
+          <ul className="space-y-1">
+            {NAV_LINKS.map((l) => (
+              <li key={l.href}>
+                <Link
+                  href={l.href}
+                  onClick={() => setOpen(false)}
+                  className="flex min-h-12 items-center rounded-xl px-3 text-base font-medium text-fg hover:bg-raised"
+                >
+                  {l.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <Button
+            className="mt-4 w-full"
+            onClick={() => {
+              setOpen(false);
+              openContact();
+            }}
+          >
+            Get in touch
+          </Button>
+        </nav>
       )}
     </header>
   );
