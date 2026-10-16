@@ -60,4 +60,6 @@ Edit `src/data/agencies.ts`. Each fact needs a `source`. Put disagreements in `n
 
 ## Deployment
 
-Static export deployed to Cloudflare Pages by `.github/workflows/deploy.yml` (output directory `out`, Node 22). Security headers are in `public/_headers`.
+The site is a static export (output directory `out`, Node 22) deployed by **Cloudflare Pages' Git integration**: every push to `main` deploys to production and every pull request gets a preview URL. Security headers are in `public/_headers`.
+
+`.github/workflows/ci.yml` is a CI check only: it runs lint and the production build on every push and pull request. It does not deploy. Cloudflare deploys independently, so to stop a failing lint from reaching production, require the "Code Quality & Build Validation" check in the branch protection rules for `main`.
