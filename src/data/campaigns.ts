@@ -46,6 +46,8 @@ export interface Campaign {
   };
   launchedAt: string; // ISO date
   featured?: boolean;
+  promoted?: boolean;
+  promotedUntil?: string;
   badge?: "Campaign of the Day" | "Campaign of the Week" | "Promoted" | null;
   creativeAngle: string;
   websiteUrl: string;

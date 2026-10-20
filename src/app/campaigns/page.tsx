@@ -10,8 +10,12 @@ import {
   Calendar,
   CheckCircle2,
   Video,
+  Search,
+  Zap,
 } from "lucide-react";
 import CampaignCard from "@/components/campaigns/CampaignCard";
+import PromotedSpotlight from "@/components/campaigns/PromotedSpotlight";
+import PromoteModal from "@/components/campaigns/PromoteModal";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import {
@@ -21,18 +25,27 @@ import {
   type CampaignCategory,
   type CampaignFormat,
 } from "@/data/campaigns";
-import { getAllCampaigns, saveUserCampaign } from "@/lib/campaigns/store";
+import {
+  getAllCampaigns,
+  getPromotedCampaign,
+  saveUserCampaign,
+} from "@/lib/campaigns/store";
 
 type TimePeriod = "today" | "week" | "all";
 
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>(() => getAllCampaigns());
+  const [promotedItem, setPromotedItem] = useState<Campaign>(() => getPromotedCampaign());
   const [period, setPeriod] = useState<TimePeriod>("week");
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedFormat, setSelectedFormat] = useState<CampaignFormat | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<CampaignCategory | null>(null);
-  const [submitOpen, setSubmitOpen] = useState(false);
 
-  // Form State
+  // Modals
+  const [submitOpen, setSubmitOpen] = useState(false);
+  const [promoteOpen, setPromoteOpen] = useState(false);
+
+  // Quick Submit Form State
   const [form, setForm] = useState({
     title: "",
     brand: "",
@@ -51,11 +64,20 @@ export default function CampaignsPage() {
 
   function refresh() {
     setCampaigns(getAllCampaigns());
+    setPromotedItem(getPromotedCampaign());
   }
 
   // Filter and sort campaigns
   const filtered = campaigns
     .filter((c) => {
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchTitle = c.title.toLowerCase().includes(q);
+        const matchBrand = c.brand.toLowerCase().includes(q);
+        const matchAgency = c.agency.name.toLowerCase().includes(q);
+        const matchTagline = c.tagline.toLowerCase().includes(q);
+        if (!matchTitle && !matchBrand && !matchAgency && !matchTagline) return false;
+      }
       if (selectedFormat && c.format !== selectedFormat) return false;
       if (selectedCategory && c.category !== selectedCategory) return false;
       return true;
@@ -126,37 +148,69 @@ export default function CampaignsPage() {
               <Sparkles className="h-3.5 w-3.5" />
               Creative Leaderboard
             </span>
-            <span className="text-xs text-muted">Curated viral campaigns & ads</span>
+            <span className="text-xs text-muted">Product Hunt for Creative Campaigns</span>
           </div>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-fg sm:text-4xl lg:text-5xl">
             Campaign Showcase
           </h1>
           <p className="mt-2 max-w-2xl text-base text-muted">
-            The front page of viral advertising. Discover, upvote, and critique the most creative
-            ad campaigns, marketing stunts, and breakout reels from top global agencies.
+            The front page of viral advertising. Discover, upvote, and study the hooks, angles,
+            and creative breakdowns of top global ads.
           </p>
         </div>
 
+        {/* Action CTAs */}
         <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setPromoteOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-amber-400/50 bg-amber-400/15 px-4 py-2.5 text-sm font-bold text-amber-300 shadow-sm transition-all hover:bg-amber-400/25"
+          >
+            <Zap className="h-4 w-4 text-amber-400" />
+            <span>Promote to #1 ($29)</span>
+          </button>
+
           <Button
             variant="primary"
             onClick={() => setSubmitOpen(true)}
             className="flex items-center gap-2 shadow-lg shadow-accent/20"
           >
             <Plus className="h-4 w-4" />
-            Launch Campaign
+            <span>Launch Free</span>
           </Button>
+
           <Link
             href="/agencies"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-medium text-muted hover:border-line-strong hover:text-fg"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-muted hover:border-line-strong hover:text-fg"
           >
-            Agency Directory
+            Agencies
           </Link>
         </div>
       </div>
 
-      {/* Filter Bar: Period + Format + Industry */}
-      <div className="mt-8 flex flex-col gap-4 border-b border-line pb-4 lg:flex-row lg:items-center lg:justify-between">
+      {/* Promoted Spotlight Hero Section */}
+      <div className="mt-8">
+        <PromotedSpotlight
+          campaign={promotedItem}
+          onPromoteClick={() => setPromoteOpen(true)}
+          onUpvoteChange={refresh}
+        />
+      </div>
+
+      {/* Search and Filters Bar */}
+      <div className="mt-10 flex flex-col gap-4 border-b border-line pb-4 lg:flex-row lg:items-center lg:justify-between">
+        {/* Search Bar */}
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search campaigns, brands, or hooks..."
+            className="w-full rounded-xl border border-line bg-surface pl-10 pr-4 py-2 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none"
+          />
+        </div>
+
         {/* Time Period Tabs */}
         <div className="flex items-center gap-1 rounded-xl bg-surface p-1">
           <button
@@ -196,38 +250,38 @@ export default function CampaignsPage() {
             All-Time Best
           </button>
         </div>
+      </div>
 
-        {/* Format Selector Pills */}
-        <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto">
-          <button
-            type="button"
-            onClick={() => setSelectedFormat(null)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-              selectedFormat === null
-                ? "bg-fg text-ink font-bold"
-                : "border border-line bg-surface text-muted hover:border-line-strong hover:text-fg"
-            }`}
-          >
-            All Formats
-          </button>
-          {CAMPAIGN_FORMATS.map((f) => {
-            const active = selectedFormat === f;
-            return (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setSelectedFormat(active ? null : f)}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                  active
-                    ? "bg-fg text-ink font-bold"
-                    : "border border-line bg-surface text-muted hover:border-line-strong hover:text-fg"
-                }`}
-              >
-                {f}
-              </button>
-            );
-          })}
-        </div>
+      {/* Format Selector Pills */}
+      <div className="mt-3 flex flex-wrap items-center gap-1.5 overflow-x-auto">
+        <button
+          type="button"
+          onClick={() => setSelectedFormat(null)}
+          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            selectedFormat === null
+              ? "bg-fg text-ink font-bold"
+              : "border border-line bg-surface text-muted hover:border-line-strong hover:text-fg"
+          }`}
+        >
+          All Formats
+        </button>
+        {CAMPAIGN_FORMATS.map((f) => {
+          const active = selectedFormat === f;
+          return (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setSelectedFormat(active ? null : f)}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                active
+                  ? "bg-fg text-ink font-bold"
+                  : "border border-line bg-surface text-muted hover:border-line-strong hover:text-fg"
+              }`}
+            >
+              {f}
+            </button>
+          );
+        })}
       </div>
 
       {/* Category Sub-filter */}
@@ -268,7 +322,7 @@ export default function CampaignsPage() {
             <Video className="h-10 w-10 text-muted/50" />
             <h3 className="mt-3 text-lg font-bold text-fg">No campaigns found</h3>
             <p className="mt-1 text-sm text-muted">
-              Try adjusting your format or industry filter.
+              Try adjusting your search query or category filter.
             </p>
           </div>
         ) : (
@@ -285,7 +339,7 @@ export default function CampaignsPage() {
         )}
       </div>
 
-      {/* Submit Campaign Modal */}
+      {/* Quick Launch Campaign Modal */}
       <Modal
         open={submitOpen}
         onClose={() => setSubmitOpen(false)}
@@ -391,60 +445,71 @@ export default function CampaignsPage() {
               <input
                 type="text"
                 required
-                placeholder="What makes this campaign memorable in one line"
+                placeholder="e.g. Turning sweet tea tropes into aggressive, heavy-metal thirst murder."
                 value={form.tagline}
                 onChange={(e) => setForm({ ...form, tagline: e.target.value })}
                 className="mt-1 w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-fg focus:border-accent focus:outline-none"
               />
             </div>
 
-            <div className="rounded-xl border border-line bg-raised/40 p-3 space-y-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-accent">
-                The Creative Teardown (Optional)
-              </span>
-              <div>
-                <label className="text-xs text-muted">The Hook (first 3 seconds / headline):</label>
-                <input
-                  type="text"
-                  placeholder="What stops the scroll?"
-                  value={form.theHook}
-                  onChange={(e) => setForm({ ...form, theHook: e.target.value })}
-                  className="mt-0.5 w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-xs text-fg focus:border-accent focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted">The Angle / Strategy:</label>
-                <input
-                  type="text"
-                  placeholder="Why does this psychology work?"
-                  value={form.theAngle}
-                  onChange={(e) => setForm({ ...form, theAngle: e.target.value })}
-                  className="mt-0.5 w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-xs text-fg focus:border-accent focus:outline-none"
-                />
-              </div>
-            </div>
-
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-muted">
-                Image or Thumbnail URL (Optional)
+                The Hook (First 3 Seconds)
               </label>
-              <input
-                type="url"
-                placeholder="https://example.com/thumbnail.jpg"
-                value={form.thumbnailUrl}
-                onChange={(e) => setForm({ ...form, thumbnailUrl: e.target.value })}
+              <textarea
+                rows={2}
+                placeholder="What grabs the viewer's attention instantly?"
+                value={form.theHook}
+                onChange={(e) => setForm({ ...form, theHook: e.target.value })}
                 className="mt-1 w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-fg focus:border-accent focus:outline-none"
               />
             </div>
 
-            <div className="pt-2">
-              <Button type="submit" variant="primary" className="w-full justify-center">
-                Publish Campaign to Leaderboard
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted">
+                  Campaign / Video URL
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://..."
+                  value={form.websiteUrl}
+                  onChange={(e) => setForm({ ...form, websiteUrl: e.target.value })}
+                  className="mt-1 w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-fg focus:border-accent focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted">
+                  Thumbnail Image URL
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://images.unsplash.com/..."
+                  value={form.thumbnailUrl}
+                  onChange={(e) => setForm({ ...form, thumbnailUrl: e.target.value })}
+                  className="mt-1 w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-fg focus:border-accent focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4">
+              <Button type="button" variant="ghost" onClick={() => setSubmitOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary">
+                Publish Free Campaign
               </Button>
             </div>
           </form>
         )}
       </Modal>
+
+      {/* Paid Promote Modal */}
+      <PromoteModal
+        open={promoteOpen}
+        onClose={() => setPromoteOpen(false)}
+        onSuccess={refresh}
+      />
     </div>
   );
 }

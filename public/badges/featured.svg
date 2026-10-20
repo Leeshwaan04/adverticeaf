@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="210" height="52" viewBox="0 0 210 52" fill="none">
+  <rect width="210" height="52" rx="12" fill="#0C0D0E" stroke="#2563EB" stroke-width="1.5"/>
+  <circle cx="26" cy="26" r="14" fill="#2563EB" fill-opacity="0.2"/>
+  <path d="M26 18L32 30H20L26 18Z" fill="#38BDF8"/>
+  <text x="48" y="22" fill="#9CA3AF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="600" letter-spacing="0.05em">FEATURED ON</text>
+  <text x="48" y="38" fill="#F9FAFB" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="700">AdverticeAF</text>
+</svg>

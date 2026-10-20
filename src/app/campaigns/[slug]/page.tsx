@@ -10,6 +10,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { CAMPAIGNS_SEED } from "@/data/campaigns";
+import CampaignDetailActions from "@/components/campaigns/CampaignDetailActions";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -75,16 +76,8 @@ export default async function CampaignDetailPage({ params }: Props) {
           <p className="mt-2 text-base text-muted sm:text-lg">{campaign.tagline}</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <a
-            href={campaign.websiteUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-bold text-fg hover:border-line-strong hover:bg-raised"
-          >
-            <span>Visit Brand</span>
-            <ArrowUpRight className="h-4 w-4 text-muted" />
-          </a>
+        <div className="flex items-center">
+          <CampaignDetailActions campaign={campaign} />
         </div>
       </div>
 

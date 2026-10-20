@@ -56,7 +56,13 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Button size="sm" onClick={() => openContact()} className="max-sm:hidden">
+          <Link
+            href="/campaigns"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3.5 py-1.5 text-xs font-bold text-accent-ink transition-colors hover:bg-accent-hover max-sm:hidden"
+          >
+            Launch Ad
+          </Link>
+          <Button size="sm" variant="ghost" onClick={() => openContact()} className="max-sm:hidden">
             Get in touch
           </Button>
           <button

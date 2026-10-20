@@ -11,6 +11,7 @@ import {
   Trophy,
   Eye,
 } from "lucide-react";
+import confetti from "canvas-confetti";
 import type { Campaign } from "@/data/campaigns";
 import { isCampaignUpvoted, toggleCampaignUpvote } from "@/lib/campaigns/store";
 
@@ -30,6 +31,13 @@ export default function CampaignCard({ campaign, rank, onUpvoteChange }: Props) 
     const res = toggleCampaignUpvote(campaign.id);
     setUpvoted(res.upvoted);
     setVotes((prev) => (res.upvoted ? prev + 1 : prev - 1));
+    if (res.upvoted) {
+      confetti({
+        particleCount: 40,
+        spread: 60,
+        origin: { y: 0.8 },
+      });
+    }
     if (onUpvoteChange) onUpvoteChange();
   }
 
@@ -60,7 +68,17 @@ export default function CampaignCard({ campaign, rank, onUpvoteChange }: Props) 
 
         {/* Rank Overlay (optional) */}
         {rank && (
-          <div className="absolute bottom-3 left-3 flex h-7 w-7 items-center justify-center rounded-lg bg-ink/80 text-xs font-black text-accent backdrop-blur-md">
+          <div
+            className={`absolute bottom-3 left-3 flex h-7 w-7 items-center justify-center rounded-lg text-xs font-black backdrop-blur-md ${
+              rank === 1
+                ? "bg-amber-400 text-ink shadow-md shadow-amber-400/20"
+                : rank === 2
+                ? "bg-slate-300 text-ink"
+                : rank === 3
+                ? "bg-amber-700 text-white"
+                : "bg-ink/80 text-muted"
+            }`}
+          >
             #{rank}
           </div>
         )}
