@@ -1,4 +1,5 @@
 import Hero from "@/components/Hero";
+import CampaignsTeaser from "@/components/campaigns/CampaignsTeaser";
 import HookChecker from "@/components/HookChecker";
 import DirectoryTeaser from "@/components/DirectoryTeaser";
 import CreativeFormats from "@/components/CreativeFormats";
@@ -10,6 +11,7 @@ export default function Home() {
   return (
     <>
       <Hero />
+      <CampaignsTeaser />
       <HookChecker />
       <DirectoryTeaser />
       <CreativeFormats />

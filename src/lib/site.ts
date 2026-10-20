@@ -39,8 +39,9 @@ export const SITE = {
 } as const;
 
 export const NAV_LINKS = [
-  { href: "/#hook-checker", label: "Hook Checker" },
+  { href: "/campaigns", label: "Campaigns" },
   { href: "/agencies", label: "Agency Directory" },
+  { href: "/#hook-checker", label: "Hook Checker" },
   { href: "/#planner", label: "Budget Planner" },
   { href: "/#services", label: "Services" },
   { href: "/about", label: "About" },
