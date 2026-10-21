@@ -28,6 +28,9 @@ jobs:
       - name: Code Quality & Lint Check
         run: npm run lint
 
+      - name: Unit tests
+        run: npm test
+
       - name: Production Static Build
         run: npm run build
 

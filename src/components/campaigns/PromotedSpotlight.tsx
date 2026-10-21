@@ -27,6 +27,8 @@ export default function PromotedSpotlight({
   onPromoteClick,
   onUpvoteChange,
 }: Props) {
+  // A paid Spotlight comes from the server: it has no detail page, and its votes would only ever live in one browser.
+  const paid = "paid" in campaign;
   const [upvoted, setUpvoted] = useState(() => isCampaignUpvoted(campaign.id));
   const [votes, setVotes] = useState(campaign.initialUpvotes);
 
@@ -56,7 +58,7 @@ export default function PromotedSpotlight({
             <span>#1 Promoted Spotlight</span>
           </span>
           <span className="text-xs font-medium text-muted">
-            Live 24h Placement
+            {paid ? "Paid placement" : "Featured campaign"}
           </span>
         </div>
 
@@ -140,6 +142,7 @@ export default function PromotedSpotlight({
 
           {/* Footer CTAs */}
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-line/60 pt-4">
+            {!paid && (
             <button
               type="button"
               onClick={handleUpvote}
@@ -152,7 +155,9 @@ export default function PromotedSpotlight({
               <ArrowUp className={`h-4 w-4 ${upvoted ? "text-amber-400" : "text-muted"}`} />
               <span>{votes} Upvotes</span>
             </button>
+            )}
 
+            {!paid && (
             <Link
               href={`/campaigns/${campaign.slug}`}
               className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-sm font-bold text-ink shadow-md transition-all hover:bg-accent-hover"
@@ -160,11 +165,12 @@ export default function PromotedSpotlight({
               <span>View Breakdown</span>
               <ArrowUpRight className="h-4 w-4" />
             </Link>
+            )}
 
             <a
               href={campaign.websiteUrl}
               target="_blank"
-              rel="noopener noreferrer"
+              rel={paid ? "sponsored nofollow noopener noreferrer" : "noopener noreferrer"}
               className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-muted hover:border-line-strong hover:text-fg"
             >
               <span>Visit Brand</span>

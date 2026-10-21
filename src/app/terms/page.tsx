@@ -54,6 +54,14 @@ export default function TermsPage() {
           that sets out scope, timing and price. We do not promise specific advertising results.
         </p>
 
+        <h2>Paid placements</h2>
+        <p>
+          Paid placements, such as a Spotlight on the Campaigns page, are advertising. They are clearly labelled, they reflect payment and not quality,
+          and they are not an endorsement. Prices are shown in US dollars before you pay and are set by us, not by your browser. Placements run one at a
+          time in the order they are paid for. We can decline or remove a placement that breaks the rules on the page or the law, and if we cannot
+          deliver a placement you paid for, we refund it in full. Payments are processed by Razorpay.
+        </p>
+
         <h2>No warranty and limits on liability</h2>
         <p>
           The site and tools are provided as they are, without warranties of any kind. To the extent the law allows, we are

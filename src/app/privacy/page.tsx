@@ -42,7 +42,12 @@ export default function PrivacyPage() {
           <li>Listing form: the agency name, website, your work email, location, category, source links and any details you add.</li>
           <li>The address of the page you sent the form from.</li>
         </ul>
-        <p>We do not ask for payment details or sensitive personal information, and we ask that you do not include any.</p>
+        <p>
+          We do not ask for sensitive personal information, and we ask that you do not include any in forms. When you buy a paid placement, your
+          payment is taken by our payment provider, Razorpay. Your card or bank details are entered into Razorpay&apos;s payment window and are
+          never seen or stored by us. We keep a record of the order (what was bought, the amount, the order and payment reference, and the time),
+          together with the campaign details you submitted, so we can show your placement and deal with any problem with your payment.
+        </p>
 
         <h2>Why we use it</h2>
         <p>
@@ -52,14 +57,16 @@ export default function PrivacyPage() {
 
         <h2>Who it goes to</h2>
         <p>
-          Form submissions are delivered to our inbox, either through a form-handling service or by opening an email from
+          Payments are processed by Razorpay. Form submissions are delivered to our inbox, either through a form-handling service or by opening an email from
           your own email app. Those providers process the message on our behalf. We may also share information where the
           law requires it.
         </p>
 
         <h2>Cookies and tracking</h2>
         <p>
-          The site does not set cookies of its own and does not use advertising or analytics trackers. Fonts are served
+          The site does not set cookies of its own and does not use advertising or analytics trackers. The one exception is paying: Razorpay&apos;s
+          payment script is loaded from Razorpay only when you start a payment, and Razorpay may set its own cookies or use similar technologies
+          for fraud prevention under its own privacy policy. Fonts are served
           from this site rather than from a third-party font service. If we add analytics later, we will update this page
           first and ask for consent where the law requires it.
         </p>

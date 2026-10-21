@@ -1,0 +1,6 @@
+# Copy to .dev.vars (git-ignored) for local development. TEST keys only.
+RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxxxx
+RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxxxxxxxxxx
+RAZORPAY_WEBHOOK_SECRET=choose-a-long-random-string
+RAZORPAY_CURRENCY=USD
+ALLOWED_ORIGINS=http://localhost:8799,http://localhost:3000

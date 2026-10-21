@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Flame,
@@ -16,6 +16,7 @@ import {
 import CampaignCard from "@/components/campaigns/CampaignCard";
 import PromotedSpotlight from "@/components/campaigns/PromotedSpotlight";
 import PromoteModal from "@/components/campaigns/PromoteModal";
+import { fetchPaidPromotion } from "@/lib/campaigns/paid";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import {
@@ -64,8 +65,23 @@ export default function CampaignsPage() {
 
   function refresh() {
     setCampaigns(getAllCampaigns());
-    setPromotedItem(getPromotedCampaign());
+    // A paid Spotlight (from the server) stays put; otherwise fall back to the local featured campaign.
+    setPromotedItem((prev) => ("paid" in prev ? prev : getPromotedCampaign()));
+    void fetchPaidPromotion().then((paid) => {
+      if (paid) setPromotedItem(paid);
+    });
   }
+
+  // Show the paid Spotlight that is live right now, if any. Nothing paid, or no payment backend: unchanged.
+  useEffect(() => {
+    let cancelled = false;
+    fetchPaidPromotion().then((paid) => {
+      if (!cancelled && paid) setPromotedItem(paid);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Filter and sort campaigns
   const filtered = campaigns
