@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Code, Zap, ArrowUpRight } from "lucide-react";
 import type { Campaign } from "@/data/campaigns";
 import EmbedBadgeModal from "@/components/campaigns/EmbedBadgeModal";
@@ -13,7 +12,6 @@ interface Props {
 }
 
 export default function CampaignDetailActions({ campaign }: Props) {
-  const router = useRouter();
   const [embedOpen, setEmbedOpen] = useState(false);
   const [promoteOpen, setPromoteOpen] = useState(false);
 
@@ -60,9 +58,6 @@ export default function CampaignDetailActions({ campaign }: Props) {
       <PromoteModal
         open={promoteOpen}
         onClose={() => setPromoteOpen(false)}
-        onSuccess={() => {
-          router.push("/campaigns");
-        }}
       />
     </>
   );

@@ -188,3 +188,4 @@ export default function EmbedBadgeModal({ open, onClose, campaign }: Props) {
     </Modal>
   );
 }
+

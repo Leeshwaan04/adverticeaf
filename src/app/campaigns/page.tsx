@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Flame,
@@ -16,6 +16,7 @@ import {
 import CampaignCard from "@/components/campaigns/CampaignCard";
 import PromotedSpotlight from "@/components/campaigns/PromotedSpotlight";
 import PromoteModal from "@/components/campaigns/PromoteModal";
+import PaymentReturn from "@/components/campaigns/PaymentReturn";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import {
@@ -36,6 +37,7 @@ type TimePeriod = "today" | "week" | "all";
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>(() => getAllCampaigns());
   const [promotedItem, setPromotedItem] = useState<Campaign>(() => getPromotedCampaign());
+  const [placementError, setPlacementError] = useState("");
   const [period, setPeriod] = useState<TimePeriod>("week");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFormat, setSelectedFormat] = useState<CampaignFormat | null>(null);
@@ -64,8 +66,32 @@ export default function CampaignsPage() {
 
   function refresh() {
     setCampaigns(getAllCampaigns());
-    setPromotedItem(getPromotedCampaign());
   }
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadPlacement() {
+      try {
+        const response = await fetch("/api/payments/promotions", {
+          cache: "no-store", signal: controller.signal,
+        });
+        if (!response.ok || !response.headers.get("content-type")?.includes("application/json")) {
+          throw new Error("Paid placements are unavailable on this server. Showing an editorial example.");
+        }
+        const data = await response.json();
+        setPromotedItem(data.campaign || getPromotedCampaign());
+        setPlacementError(data.test_mode ? "Dodo test mode: placements shown here are test purchases." : "");
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setPromotedItem(getPromotedCampaign());
+          setPlacementError(error instanceof Error ? error.message : "Could not load paid placements.");
+        }
+      }
+    }
+    void loadPlacement();
+    const interval = window.setInterval(loadPlacement, 15000);
+    return () => { controller.abort(); window.clearInterval(interval); };
+  }, []);
 
   // Filter and sort campaigns
   const filtered = campaigns
@@ -140,6 +166,7 @@ export default function CampaignsPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <PaymentReturn />
       {/* Header Banner */}
       <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
         <div>
@@ -190,7 +217,9 @@ export default function CampaignsPage() {
 
       {/* Promoted Spotlight Hero Section */}
       <div className="mt-8">
+        {placementError && <p role="status" className="mb-3 text-sm text-muted">{placementError}</p>}
         <PromotedSpotlight
+          key={promotedItem.id}
           campaign={promotedItem}
           onPromoteClick={() => setPromoteOpen(true)}
           onUpvoteChange={refresh}
@@ -508,7 +537,6 @@ export default function CampaignsPage() {
       <PromoteModal
         open={promoteOpen}
         onClose={() => setPromoteOpen(false)}
-        onSuccess={refresh}
       />
     </div>
   );

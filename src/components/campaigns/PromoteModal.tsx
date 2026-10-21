@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import confetti from "canvas-confetti";
-import { Trophy, Check, Zap } from "lucide-react";
+import { useRef, useState } from "react";
+import { Check, Zap } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import {
@@ -11,15 +10,14 @@ import {
   type CampaignCategory,
   type CampaignFormat,
 } from "@/data/campaigns";
-import { saveAndPromoteCampaign } from "@/lib/campaigns/store";
+import { PROMOTION_PLANS } from "@/lib/campaigns/promotion";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
 }
 
-export default function PromoteModal({ open, onClose, onSuccess }: Props) {
+export default function PromoteModal({ open, onClose }: Props) {
   const [plan, setPlan] = useState<"24h" | "7d">("24h");
   const [form, setForm] = useState({
     title: "",
@@ -36,64 +34,36 @@ export default function PromoteModal({ open, onClose, onSuccess }: Props) {
     creativeAngle: "",
   });
   const [submitting, setSubmitting] = useState(false);
-  const [completed, setCompleted] = useState(false);
+  const [error, setError] = useState("");
+  const busy = useRef(false);
 
-  function triggerConfetti() {
-    confetti({
-      particleCount: 80,
-      spread: 70,
-      origin: { y: 0.6 },
-    });
-  }
-
-  function handlePromote(e: React.FormEvent) {
+  async function handlePromote(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.title.trim() || !form.brand.trim() || !form.tagline.trim()) return;
-
+    if (busy.current) return;
+    busy.current = true;
     setSubmitting(true);
-
+    setError("");
     try {
-      saveAndPromoteCampaign(
-        {
-          title: form.title,
-          brand: form.brand,
-          agency: {
-            name: form.agencyName || form.brand,
-            verified: false,
-          },
-          tagline: form.tagline,
-          description: form.theAngle || form.tagline,
-          hookBreakdown: {
-            theHook: form.theHook || "High impact hook.",
-            theAngle: form.theAngle || form.tagline,
-            theResult: form.theResult || "Viral reach and conversions.",
-          },
-          mediaType: form.format === "Static / OOH" ? "image" : "video",
-          mediaUrl: form.websiteUrl || "https://adverticeaf.com",
-          thumbnailUrl:
-            form.thumbnailUrl ||
-            "https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=1200&q=80",
-          format: form.format,
-          category: form.category,
-          metrics: {
-            views: "250k+",
-          },
-          creativeAngle: form.creativeAngle || "High-Impact Hook",
-          websiteUrl: form.websiteUrl || "https://adverticeaf.com",
-        },
-        plan
-      );
-
-      triggerConfetti();
-      setCompleted(true);
-      setTimeout(() => {
-        setCompleted(false);
-        setSubmitting(false);
-        onSuccess();
-        onClose();
-      }, 1500);
+      const response = await fetch("/api/payments/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan, campaign: form }),
+        signal: AbortSignal.timeout(30000),
+      });
+      if (!response.headers.get("content-type")?.includes("application/json")) {
+        throw new Error("Checkout is not available on this server. No payment was taken.");
+      }
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Checkout is temporarily unavailable.");
+      const checkout = new URL(result.checkout_url);
+      if (checkout.protocol !== "https:" || checkout.username || checkout.password ||
+          !["checkout.dodopayments.com", "test.checkout.dodopayments.com"].includes(checkout.hostname)) {
+        throw new Error("Invalid checkout response. Please try again later.");
+      }
+      window.location.assign(checkout.href);
     } catch (err) {
-      console.error(err);
+      setError(err instanceof Error ? err.message : "Could not open checkout. Please try again.");
+      busy.current = false;
       setSubmitting(false);
     }
   }
@@ -101,22 +71,12 @@ export default function PromoteModal({ open, onClose, onSuccess }: Props) {
   return (
     <Modal
       open={open}
-      onClose={onClose}
-      title="Promote to #1 Spotlight (24h Pin)"
-      description="Pin your ad at the top of AdverticeAF with verified visibility to thousands of marketers, agency founders, and CMOs."
+      onClose={() => { if (!busy.current) onClose(); }}
+      title="Book a Spotlight Placement"
+      description="Pay securely with Dodo Payments. Verified purchases receive the full placement duration, queued after existing bookings."
     >
-      {completed ? (
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-400/20 text-amber-400">
-            <Trophy className="h-8 w-8" />
-          </div>
-          <h3 className="mt-4 text-xl font-bold text-fg">Spotlight Activated!</h3>
-          <p className="mt-2 text-sm text-muted">
-            Your campaign is now pinned to the #1 Spotlight on the Leaderboard.
-          </p>
-        </div>
-      ) : (
         <form onSubmit={handlePromote} className="space-y-4">
+          <fieldset disabled={submitting} className="space-y-4">
           {/* Plan Picker */}
           <div>
             <label className="text-xs font-bold uppercase tracking-wider text-muted">
@@ -141,11 +101,11 @@ export default function PromoteModal({ open, onClose, onSuccess }: Props) {
                   )}
                 </div>
                 <div className="mt-1 flex items-baseline gap-1">
-                  <span className="text-xl font-black text-amber-400">$29</span>
+                  <span className="text-xl font-black text-amber-400">${PROMOTION_PLANS["24h"].cents / 100}</span>
                   <span className="text-xs text-muted">/ day</span>
                 </div>
                 <p className="mt-1 text-[11px] text-muted">
-                  Guaranteed #1 Hero Card pin for 24 hours.
+                   One 24-hour placement in the booking queue.
                 </p>
               </button>
 
@@ -167,11 +127,11 @@ export default function PromoteModal({ open, onClose, onSuccess }: Props) {
                   )}
                 </div>
                 <div className="mt-1 flex items-baseline gap-1">
-                  <span className="text-xl font-black text-amber-400">$79</span>
+                  <span className="text-xl font-black text-amber-400">${PROMOTION_PLANS["7d"].cents / 100}</span>
                   <span className="text-xs text-muted">/ week</span>
                 </div>
                 <p className="mt-1 text-[11px] text-muted">
-                  Full 7 days atop leaderboard + newsletter inclusion.
+                   One full 7-day placement in the booking queue.
                 </p>
               </button>
             </div>
@@ -281,9 +241,10 @@ export default function PromoteModal({ open, onClose, onSuccess }: Props) {
             </div>
           </div>
 
-          <div className="flex items-center justify-between border-t border-line/60 pt-4">
+          {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line/60 pt-4">
             <div className="text-xs text-muted">
-              Secure checkout: Instant activation on submission.
+              USD, tax included. Activation requires verified payment.
             </div>
             <div className="flex items-center gap-2">
               <Button type="button" variant="ghost" onClick={onClose}>
@@ -295,12 +256,12 @@ export default function PromoteModal({ open, onClose, onSuccess }: Props) {
                 className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-5 py-2.5 text-sm font-bold text-ink shadow-lg shadow-amber-400/20 transition-all hover:bg-amber-300 disabled:opacity-50"
               >
                 <Zap className="h-4 w-4" />
-                <span>Lock In {plan === "24h" ? "$29" : "$79"} Placement</span>
+                <span>{submitting ? "Opening checkout..." : `Pay $${PROMOTION_PLANS[plan].cents / 100} with Dodo`}</span>
               </button>
             </div>
           </div>
+          </fieldset>
         </form>
-      )}
     </Modal>
   );
 }

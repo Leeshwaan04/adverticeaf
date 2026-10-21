@@ -1,0 +1,11 @@
+# Cloudflare Pages Functions runtime variables, not NEXT_PUBLIC variables.
+# Copy to .dev.vars for local Pages development. Never commit actual secrets.
+DODO_PAYMENTS_ENVIRONMENT=test_mode
+DODO_PAYMENTS_API_KEY=
+DODO_PAYMENTS_WEBHOOK_KEY=
+DODO_BUSINESS_ID=
+DODO_PRODUCT_24H=
+DODO_PRODUCT_7D=
+PAYMENTS_SITE_URL=http://localhost:8788
+# Set true only after Dodo approves this business and advertising placements.
+DODO_LIVE_APPROVED=false

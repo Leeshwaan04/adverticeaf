@@ -53,10 +53,10 @@ export default function PromotedSpotlight({
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-3 py-1 text-xs font-black uppercase tracking-wider text-ink shadow-sm">
             <Trophy className="h-3.5 w-3.5 fill-ink" />
-            <span>#1 Promoted Spotlight</span>
+            <span>{campaign.promoted ? "#1 Promoted Spotlight" : "Editorial Spotlight"}</span>
           </span>
           <span className="text-xs font-medium text-muted">
-            Live 24h Placement
+            {campaign.promotedUntil ? `Until ${new Date(campaign.promotedUntil).toLocaleString()}` : "Featured campaign"}
           </span>
         </div>
 
@@ -107,7 +107,7 @@ export default function PromotedSpotlight({
               </span>
             </div>
 
-            <Link href={`/campaigns/${campaign.slug}`}>
+            <Link href={campaign.id.startsWith("paid-") ? campaign.websiteUrl : `/campaigns/${campaign.slug}`}>
               <h2 className="mt-2 text-xl font-black tracking-tight text-fg transition-colors hover:text-amber-400 sm:text-2xl lg:text-3xl">
                 {campaign.title}
               </h2>
@@ -154,10 +154,10 @@ export default function PromotedSpotlight({
             </button>
 
             <Link
-              href={`/campaigns/${campaign.slug}`}
+              href={campaign.id.startsWith("paid-") ? campaign.websiteUrl : `/campaigns/${campaign.slug}`}
               className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-sm font-bold text-ink shadow-md transition-all hover:bg-accent-hover"
             >
-              <span>View Breakdown</span>
+              <span>{campaign.id.startsWith("paid-") ? "View Campaign" : "View Breakdown"}</span>
               <ArrowUpRight className="h-4 w-4" />
             </Link>
 
