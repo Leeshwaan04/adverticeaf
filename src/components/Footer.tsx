@@ -4,27 +4,25 @@ import { SITE } from "@/lib/site";
 
 const COLUMNS = [
   {
-    title: "Explore",
+    title: "Leaderboard",
     links: [
-      { href: "/#hook-checker", label: "Hook Checker" },
-      { href: "/agencies", label: "Agency Directory" },
-      { href: "/#planner", label: "Budget Planner" },
-      { href: "/#services", label: "Services" },
+      { href: "/", label: "All-Time Rankings" },
+      { href: "/board/rules", label: "Bidding Rules & FAQ" },
+      { href: "/campaigns", label: "Featured Spotlights" },
     ],
   },
   {
     title: "Company",
     links: [
-      { href: "/about", label: "About" },
-      { href: "/methodology", label: "How the directory works" },
-      { href: "/contact", label: "Contact" },
+      { href: "/about", label: "About AdverticeAF" },
+      { href: "/contact", label: "Support & Inquiries" },
     ],
   },
   {
     title: "Legal",
     links: [
-      { href: "/privacy", label: "Privacy policy" },
-      { href: "/terms", label: "Terms of use" },
+      { href: "/privacy", label: "Privacy Policy" },
+      { href: "/terms", label: "Terms of Use" },
     ],
   },
 ];
@@ -32,17 +30,17 @@ const COLUMNS = [
 export default function Footer() {
   return (
     <footer className="border-t border-line bg-surface/40">
-      <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
             <Logo />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">
-              A creative lab and a source-linked directory of creative and social-first ad agencies.
+              The public pay-to-rank leaderboard and digital attention market. Outbid rivals, claim rank #1, and reach founders & advertisers.
             </p>
             {SITE.contactEmail && (
               <a
                 href={`mailto:${SITE.contactEmail}`}
-                className="mt-4 inline-block text-sm text-accent underline underline-offset-2 hover:text-accent-hover"
+                className="mt-4 inline-block text-sm text-[#e2573f] underline underline-offset-2 hover:text-[#cf4b34]"
               >
                 {SITE.contactEmail}
               </a>
@@ -66,10 +64,9 @@ export default function Footer() {
 
         <div className="mt-12 flex flex-col gap-3 border-t border-line pt-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
           <p>
-            &copy; {new Date().getFullYear()} {SITE.legalEntity || SITE.name}. Directory information is compiled from public
-            sources and is not an endorsement.
+            &copy; {new Date().getFullYear()} {SITE.legalEntity || SITE.name}. Powered by transparent public bid rankings.
           </p>
-          <p>Directory last reviewed {new Date(SITE.lastReviewed).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p>
+          <p>All bids and ranking positions update in real-time.</p>
         </div>
       </div>
     </footer>

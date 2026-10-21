@@ -182,3 +182,4 @@ test("verifyWebhook verifies valid HMAC signature", async () => {
   const expired = await verifyWebhook(rawBody, headers, secret, (now + 400) * 1000);
   assert.equal(expired, false);
 });
+

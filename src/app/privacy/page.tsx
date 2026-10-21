@@ -42,7 +42,20 @@ export default function PrivacyPage() {
           <li>Listing form: the agency name, website, your work email, location, category, source links and any details you add.</li>
           <li>The address of the page you sent the form from.</li>
         </ul>
-        <p>We do not ask for payment details or sensitive personal information, and we ask that you do not include any.</p>
+        <p>We do not ask for payment details in any form, and we ask that you do not include any in a message.</p>
+
+        <h2>Payments</h2>
+        <p>
+          Paid campaign promotions are processed by our payment merchant of record, Dodo Payments. When you buy a
+          promotion you are redirected to a checkout hosted by Dodo; we do not see, collect or store your card details,
+          and your card number is never transmitted to or through this site.
+        </p>
+        <p>
+          To run the promotion and the refund process, Dodo provides us and we keep: a payment reference, the price
+          and plan you purchased, and whether the payment succeeded, was refunded or is in dispute. The checkout also
+          records the IP address of the request, which we use only to limit suspicious activity. We do not use payment
+          data for marketing. Dodo&apos;s own processing of your payment details is covered by Dodo&apos;s privacy policy.
+        </p>
 
         <h2>Why we use it</h2>
         <p>
@@ -71,7 +84,7 @@ export default function PrivacyPage() {
         </p>
 
         <h2>How long we keep it</h2>
-        <p>We keep messages for as long as needed to respond and to keep a reasonable record, then delete them.</p>
+        <p>We keep messages for as long as needed to respond and to keep a reasonable record, then delete them. Payment records are kept for as long as required for accounting, refunds and chargebacks.</p>
 
         <h2>Your choices</h2>
         <p>

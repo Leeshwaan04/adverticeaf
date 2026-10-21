@@ -186,9 +186,12 @@ async function webhook(request: Request, env: PaymentEnv) {
   let event: ObjectValue;
   try { event = object(JSON.parse(raw)); } catch { throw new HttpError(400, "Invalid event JSON."); }
   const id = request.headers.get("webhook-id")!;
+  // Only signature-verified events may be recorded as processed; otherwise an
+  // unsigned replay of a leaked webhook ID would make the signed delivery a no-op.
   if (await env.PROMOTIONS_DB.prepare("SELECT id FROM payment_webhooks WHERE id = ?").bind(id).first()) return json({ received: true });
   const type = String(event.type);
-  if (type !== "payment.succeeded" && type !== "refund.succeeded" && !type.startsWith("dispute.")) return json({ received: true });
+  if (type !== "payment.succeeded" && type !== "refund.succeeded"
+      && !["dispute.created", "dispute.submitted", "dispute.escalated", "dispute.closed"].includes(type)) return json({ received: true });
   if (event.business_id !== env.DODO_BUSINESS_ID) throw new HttpError(400, "Event business does not match.");
   const paymentId = object(event.data).payment_id;
   if (typeof paymentId !== "string") throw new HttpError(400, "Missing payment ID.");
@@ -205,11 +208,16 @@ async function webhook(request: Request, env: PaymentEnv) {
   const now = Date.now();
   const refunded = type === "refund.succeeded" || payment.refund_status === "partial" || payment.refund_status === "full" ||
     (Array.isArray(payment.refunds) && payment.refunds.some((refund) => object(refund).status === "succeeded"));
-  const disputed = Array.isArray(payment.disputes) && payment.disputes.some((dispute) =>
-    !["dispute_won", "dispute_cancelled"].includes(String(object(dispute).dispute_status)));
+  const disputed = type === "dispute.created" || type === "dispute.submitted" || type === "dispute.escalated" ||
+    (Array.isArray(payment.disputes) && payment.disputes.some((dispute) =>
+      !["dispute_won", "dispute_cancelled"].includes(String(object(dispute).dispute_status))));
   const statements: Statement[] = [];
   if (refunded || disputed) {
-    statements.push(env.PROMOTIONS_DB.prepare("INSERT OR IGNORE INTO revoked_payments (payment_id, revoked_at) VALUES (?, ?)").bind(paymentId, now));
+    // Only revoke placements that actually exist; a replayed dispute for a
+    // payment that was never fulfilled must not delete a later, valid booking.
+    statements.push(env.PROMOTIONS_DB.prepare(`INSERT OR IGNORE INTO revoked_payments (payment_id, revoked_at)
+      SELECT p.payment_id, ? FROM promotion_placements p
+      WHERE p.payment_id = ? GROUP BY p.payment_id`).bind(now, paymentId));
   } else if (type === "payment.succeeded") {
     if (!paymentMatches(payment, order, env.DODO_BUSINESS_ID)) throw new HttpError(409, "Payment does not match the purchased placement. Manual review required.");
     // A single SQL statement allocates the next free slot. D1 serializes writes;
