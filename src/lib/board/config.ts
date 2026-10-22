@@ -10,7 +10,7 @@
 export type BoardMode = "off" | "demo" | "live";
 
 const raw = process.env.NEXT_PUBLIC_BOARD_MODE;
-export const BOARD_MODE: BoardMode = raw === "demo" || raw === "live" ? raw : "off";
+export const BOARD_MODE: BoardMode = raw === "off" || raw === "demo" ? raw : "live";
 export const BOARD_API_BASE = (process.env.NEXT_PUBLIC_BOARD_API ?? "").replace(/\/$/, "");
 
 /** Product rules. Change here, not in components. All money is integer US cents. */

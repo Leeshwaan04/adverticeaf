@@ -22,6 +22,10 @@ export interface BoardEnv {
   PAYMENTS_SITE_URL?: string;
 }
 
+const DEFAULT_DODO_KEY = "Tdh6Zyiipg1A76MP.qcji7BYmwcKJf75sjhQOR3r3V6SQKB2pVTGYCs9y3GJmBF-w";
+const DEFAULT_PRODUCT_ID = "pdt_0NqIgdtfqfzuWtAc5O3Yk";
+const DEFAULT_WEBHOOK_KEY = "whsec_GOO7ceG30ScogOoiB9oHVcffrFMyIYyv";
+
 let initialized = false;
 let globalListings: Listing[] = [];
 let globalBids: Bid[] = [];
@@ -189,22 +193,26 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
       return json({ ok: false, error: "Missing listing information." }, 400);
     }
 
-    // If live Dodo Payments is configured in Cloudflare environment, create a hosted checkout session
-    if (env?.DODO_PAYMENTS_API_KEY && env?.DODO_PRODUCT_ID) {
-      const host = env.DODO_PAYMENTS_ENVIRONMENT === "test_mode" ? "test" : "live";
-      const siteUrl = env.PAYMENTS_SITE_URL || "https://adverticeaf.com";
+    // If live Dodo Payments is configured in Cloudflare environment or defaults, create a hosted checkout session
+    const apiKey = env?.DODO_PAYMENTS_API_KEY || DEFAULT_DODO_KEY;
+    const productId = env?.DODO_PRODUCT_ID || DEFAULT_PRODUCT_ID;
+    const mode = env?.DODO_PAYMENTS_ENVIRONMENT || "live_mode";
+    const siteUrl = env?.PAYMENTS_SITE_URL || "https://adverticeaf.com";
+
+    if (apiKey && productId) {
+      const host = mode === "test_mode" ? "test" : "live";
 
       try {
         const dodoRes = await fetch(`https://${host}.dodopayments.com/checkouts`, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${env.DODO_PAYMENTS_API_KEY}`,
+            Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             product_cart: [
               {
-                product_id: env.DODO_PRODUCT_ID,
+                product_id: productId,
                 quantity: 1,
                 amount: amountCents,
               },
@@ -261,8 +269,9 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
   // POST /v1/webhook (Dodo Payments webhook for live payment fulfillment)
   if (path === "/webhook" && request.method === "POST") {
     const rawBody = await request.text();
-    if (env?.DODO_PAYMENTS_WEBHOOK_KEY) {
-      const verified = await verifyWebhook(rawBody, request.headers, env.DODO_PAYMENTS_WEBHOOK_KEY, now);
+    const webhookKey = env?.DODO_PAYMENTS_WEBHOOK_KEY || DEFAULT_WEBHOOK_KEY;
+    if (webhookKey) {
+      const verified = await verifyWebhook(rawBody, request.headers, webhookKey, now);
       if (!verified) {
         return json({ error: "Invalid webhook signature" }, 401);
       }
