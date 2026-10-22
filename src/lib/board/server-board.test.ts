@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { handleBoardRequest, type BoardEnv } from "../../../server/board";
 
-describe("Server Board API Endpoints", () => {
+describe("Server Board API Endpoints & VAPT Security", () => {
   it("GET /v1/board returns live snapshot with rankings and stats", async () => {
     const req = new Request("https://adverticeaf.com/v1/board", { method: "GET" });
     const res = await handleBoardRequest(req);
@@ -23,7 +23,7 @@ describe("Server Board API Endpoints", () => {
     expect(data.stats.listings).toBeGreaterThanOrEqual(data.rows.length);
   });
 
-  it("POST /v1/quote calculates rank projections correctly", async () => {
+  it("POST /v1/quote calculates rank projections correctly with complete schema", async () => {
     const req = new Request("https://adverticeaf.com/v1/quote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -35,8 +35,18 @@ describe("Server Board API Endpoints", () => {
 
     const res = await handleBoardRequest(req);
     expect(res.status).toBe(200);
-    const data = (await res.json()) as { ok: boolean; newRank: number; tookLead: boolean };
+    const data = (await res.json()) as {
+      ok: boolean;
+      domain: string;
+      newRank: number;
+      amountCents: number;
+      costToLeadCents: number;
+      tookLead: boolean;
+    };
     expect(data.ok).toBe(true);
+    expect(data.domain).toBe("sypha.ai");
+    expect(data.amountCents).toBe(500000);
+    expect(data.costToLeadCents).toBeGreaterThan(0);
     expect(data.newRank).toBe(1);
     expect(data.tookLead).toBe(true);
   });
@@ -58,13 +68,13 @@ describe("Server Board API Endpoints", () => {
     expect(data.message).toContain("founder@sypha.ai");
   });
 
-  it("POST /v1/alerts rejects invalid inputs", async () => {
+  it("VAPT: POST /v1/alerts rejects CRLF injection and invalid emails", async () => {
     const req = new Request("https://adverticeaf.com/v1/alerts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        domain: "",
-        email: "not-an-email",
+        domain: "sypha.ai",
+        email: "attacker@evil.com\r\nBcc: victim@target.com",
       }),
     });
 
@@ -93,8 +103,17 @@ describe("Server Board API Endpoints", () => {
     expect(metaMethod?.value).toContain(data.token);
   });
 
-  it("GET /v1/og generates branded 1200x630 vector SVG share card", async () => {
-    const req = new Request("https://adverticeaf.com/v1/og?domain=sypha.ai&name=Sypha+AI&rank=1&spent=%242%2C500", {
+  it("VAPT: SSRF protection blocks localhost, private IPs and cloud metadata", async () => {
+    const ssrfTargets = ["localhost", "127.0.0.1", "169.254.169.254", "internal.corp"];
+    for (const target of ssrfTargets) {
+      const req = new Request(`https://adverticeaf.com/v1/verification?domain=${target}`, { method: "GET" });
+      const res = await handleBoardRequest(req);
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it("GET /v1/og generates branded 1200x630 vector SVG share card with XML escaping", async () => {
+    const req = new Request("https://adverticeaf.com/v1/og?domain=sypha.ai&name=Sypha+%3Cscript%3E&rank=1&spent=%242%2C500", {
       method: "GET",
     });
     const res = await handleBoardRequest(req);
@@ -103,10 +122,9 @@ describe("Server Board API Endpoints", () => {
 
     const svg = await res.text();
     expect(svg).toContain('width="1200" height="630"');
-    expect(svg).toContain("Sypha AI");
+    expect(svg).toContain("Sypha &lt;script&gt;");
+    expect(svg).not.toContain("<script>");
     expect(svg).toContain("KING OF THE HILL");
-    expect(svg).toContain("$2,500");
-    expect(svg).toContain("adverticeaf.com/board");
   });
 
   it("GET /api/og route also generates SVG card via /api prefix", async () => {

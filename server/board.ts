@@ -171,6 +171,30 @@ async function generateVerificationToken(domain: string, secret = "adv_salt_2026
   return `adv_${hex.slice(0, 16)}`;
 }
 
+function isSafeDomain(domain: string): boolean {
+  if (!domain || domain.length > 253) return false;
+  if (!/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/i.test(domain)) {
+    return false;
+  }
+  const lower = domain.toLowerCase();
+  if (
+    lower === "localhost" ||
+    lower.endsWith(".localhost") ||
+    lower.endsWith(".local") ||
+    lower.endsWith(".internal") ||
+    lower.endsWith(".corp") ||
+    lower.endsWith(".lan") ||
+    lower.endsWith(".home") ||
+    lower.endsWith(".arpa")
+  ) {
+    return false;
+  }
+  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(lower) || lower.includes(":")) {
+    return false;
+  }
+  return true;
+}
+
 function escapeXml(unsafe: string): string {
   return unsafe.replace(/[<>&'"]/g, (c) => {
     switch (c) {
@@ -481,18 +505,24 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
       season?: SeasonId;
     };
 
-    const amountCents = typeof body.amountCents === "number" ? body.amountCents : RULES.minBidCents;
+    const amountCents = typeof body.amountCents === "number" && Number.isSafeInteger(body.amountCents) && body.amountCents >= RULES.minBidCents
+      ? Math.min(body.amountCents, RULES.maxBidCents)
+      : RULES.minBidCents;
     const season: SeasonId = body.season || "all";
     const window = seasonWindow(season, now);
     const rows = rankListings(globalListings, globalBids, globalClicks, window, null, now);
+    const leadCostCents = costToLead(rows);
 
-    let targetDomain = body.domain;
+    let targetDomain = typeof body.domain === "string" ? body.domain.trim().toLowerCase() : "";
     if (!targetDomain && body.url) {
       const parsed = checkListingUrl(body.url);
       if (parsed.ok) targetDomain = parsed.host;
     }
+    if (!targetDomain) {
+      targetDomain = "yourbrand.com";
+    }
 
-    const existingRow = targetDomain ? rows.find((r) => r.listing.domain === targetDomain) : undefined;
+    const existingRow = rows.find((r) => r.listing.domain === targetDomain);
     const currentTotal = existingRow ? existingRow.totalCents : 0;
     const newTotal = currentTotal + amountCents;
 
@@ -504,11 +534,16 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
 
     return json({
       ok: true,
+      domain: targetDomain,
+      isNewListing: !existingRow,
+      amountCents,
+      currentTotalCents: currentTotal,
+      newTotalCents: newTotal,
       currentRank: existingRow ? existingRow.rank : null,
       newRank,
       of: rows.length + (existingRow ? 0 : 1),
-      currentTotalCents: currentTotal,
-      newTotalCents: newTotal,
+      costToLeadCents: leadCostCents,
+      costToClimbCents: existingRow?.climbCostCents ?? null,
       tookLead: newRank === 1,
     });
   }
@@ -516,10 +551,17 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
   // POST /v1/alerts (Outbid Email Alert Subscription)
   if (path === "/alerts" && request.method === "POST") {
     const body = await request.json().catch(() => ({})) as { domain?: string; email?: string };
-    const domain = typeof body.domain === "string" ? body.domain.trim().toLowerCase() : "";
-    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const domain = typeof body.domain === "string" ? body.domain.trim().toLowerCase().slice(0, 200) : "";
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase().slice(0, 254) : "";
 
-    if (!domain || !email || !email.includes("@") || email.length < 5) {
+    // VAPT security check: block CRLF injection, require valid email format
+    if (
+      !domain ||
+      !email ||
+      /[\r\n]/.test(email) ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+      email.length < 5
+    ) {
       return json({ ok: false, error: "Please provide a valid domain and email address." }, 400);
     }
 
@@ -543,8 +585,8 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
   // GET /v1/verification (Retrieve verification methods and token)
   if (path === "/verification" && request.method === "GET") {
     const domain = (url.searchParams.get("domain") || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-    if (!domain) {
-      return json({ error: "Missing domain parameter." }, 400);
+    if (!domain || !isSafeDomain(domain)) {
+      return json({ error: "Invalid or unsupported public domain name." }, 400);
     }
 
     const listing = globalListings.find((l) => l.domain === domain);
@@ -578,8 +620,8 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
     const body = await request.json().catch(() => ({})) as { domain?: string };
     const domain = (typeof body.domain === "string" ? body.domain : "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
 
-    if (!domain) {
-      return json({ verified: false, message: "Missing domain to verify." }, 400);
+    if (!domain || !isSafeDomain(domain)) {
+      return json({ verified: false, message: "Invalid or unsupported public domain name." }, 400);
     }
 
     let token = globalVerifications[domain]?.token;

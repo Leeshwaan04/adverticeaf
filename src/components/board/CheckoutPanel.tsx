@@ -30,7 +30,7 @@ interface Props {
  * It never claims a payment happened unless onConfirm resolved ok.
  */
 export default function CheckoutPanel({ lines, onConfirm, onDone, disabled, disabledReason }: Props) {
-  const [agreed, setAgreed] = useState(false);
+  const [agreed, setAgreed] = useState(true);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const termsId = useId();
@@ -38,6 +38,10 @@ export default function CheckoutPanel({ lines, onConfirm, onDone, disabled, disa
   const demo = BOARD_MODE === "demo";
 
   async function pay() {
+    if (!agreed) {
+      setError("Please agree to the Board rules and refund policy to proceed.");
+      return;
+    }
     setError(null);
     setPending(true);
     try {
@@ -107,7 +111,7 @@ export default function CheckoutPanel({ lines, onConfirm, onDone, disabled, disa
       )}
       {disabled && disabledReason && <p className="text-xs text-muted">{disabledReason}</p>}
 
-      <Button size="lg" className="w-full" disabled={!agreed || pending || disabled} onClick={pay} aria-busy={pending}>
+      <Button size="lg" className="w-full" disabled={pending || disabled} onClick={pay} aria-busy={pending}>
         {pending ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -105,7 +105,7 @@ export default function BoardPage() {
     category: "Marketing",
   });
   const [formErrors, setFormErrors] = useState<ListingErrors>({});
-  const [quote, setQuote] = useState<Quote | null>(null);
+  const [serverQuote, setServerQuote] = useState<Quote | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -216,7 +216,33 @@ export default function BoardPage() {
     };
   }, [season, category, reloadCounter]);
 
-  // Recalculate quote whenever bid modal inputs change
+  // Instant local projection so UI is immediately responsive
+  const localQuote = useMemo<Quote | null>(() => {
+    if (!bidOpen) return null;
+    const rows = snapshot?.rows || [];
+    let projectedRank = 1;
+    for (const r of rows) {
+      if (targetDomain && r.listing.domain === targetDomain) continue;
+      if (r.totalCents >= bidAmountCents) projectedRank++;
+    }
+    return {
+      ok: true,
+      domain: targetDomain || "yourbrand.com",
+      isNewListing: isNew,
+      amountCents: bidAmountCents,
+      currentTotalCents: 0,
+      newTotalCents: bidAmountCents,
+      currentRank: null,
+      newRank: projectedRank,
+      of: rows.length + (isNew ? 1 : 0),
+      costToLeadCents: snapshot?.leadCostCents ?? RULES.minBidCents,
+      costToClimbCents: null,
+    };
+  }, [bidOpen, snapshot, targetDomain, bidAmountCents, isNew]);
+
+  const quote = serverQuote?.ok && serverQuote.amountCents === bidAmountCents ? serverQuote : localQuote;
+
+  // Fetch refined quote from server asynchronously whenever bid modal inputs change
   useEffect(() => {
     if (!bidOpen) return;
     let unmounted = false;
@@ -224,16 +250,16 @@ export default function BoardPage() {
     const input = {
       amountCents: bidAmountCents,
       season,
-      ...(isNew ? { url: listingForm.url } : { domain: targetDomain ?? undefined }),
+      ...(isNew ? { url: listingForm.url.trim() || undefined } : { domain: targetDomain ?? undefined }),
     };
 
     api
       .quote(input)
       .then((q) => {
-        if (!unmounted) setQuote(q);
+        if (!unmounted && q && q.ok) setServerQuote(q);
       })
       .catch(() => {
-        if (!unmounted) setQuote(null);
+        // Fallback to localQuote
       });
 
     return () => {
@@ -901,20 +927,35 @@ export default function BoardPage() {
           </div>
 
           {/* Checkout Panel */}
-          <CheckoutPanel
-            lines={[
-              {
-                label: isNew
-                  ? `New Board Placement (${listingForm.name || "Brand"})`
-                  : `Rank Boost (${targetDomain})`,
-                amountCents: bidAmountCents,
-              },
-            ]}
-            onConfirm={handleConfirmPurchase}
-            onDone={() => setBidOpen(false)}
-            disabled={!quote || !quote.ok}
-            disabledReason={quote && !quote.ok ? quote.error : undefined}
-          />
+          {(() => {
+            const isFormIncomplete = isNew
+              ? (!listingForm.url.trim() || !listingForm.name.trim() || !listingForm.category)
+              : !targetDomain;
+            const isAmountInvalid = bidAmountCents < RULES.minBidCents;
+
+            return (
+              <CheckoutPanel
+                lines={[
+                  {
+                    label: isNew
+                      ? `New Board Placement (${listingForm.name.trim() || "Your Brand"})`
+                      : `Rank Boost (${targetDomain})`,
+                    amountCents: bidAmountCents,
+                  },
+                ]}
+                onConfirm={handleConfirmPurchase}
+                onDone={() => setBidOpen(false)}
+                disabled={isFormIncomplete || isAmountInvalid}
+                disabledReason={
+                  isAmountInvalid
+                    ? `Minimum bid is ${formatUsd(RULES.minBidCents)}`
+                    : isFormIncomplete
+                    ? "Enter your link and brand name above to continue"
+                    : undefined
+                }
+              />
+            );
+          })()}
         </div>
       </Modal>
 
