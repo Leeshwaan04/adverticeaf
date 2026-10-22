@@ -44,7 +44,7 @@ const organization = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${grotesk.variable}`}>
-      <body className="min-h-screen bg-ink font-sans text-fg antialiased selection:bg-[#e2573f]/30 selection:text-white">
+      <body className="min-h-screen bg-ink font-sans text-fg antialiased selection:bg-accent/30 selection:text-white">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organization).replace(/</g, "\\u003c") }}

@@ -37,7 +37,7 @@ export default function Navbar() {
           <button
             type="button"
             onClick={triggerOpenBid}
-            className="inline-flex items-center gap-1.5 rounded-full bg-[#e2573f] px-4 py-2 text-xs sm:text-sm font-bold text-white shadow-lg shadow-[#e2573f]/25 transition-all hover:bg-[#cf4b34] hover:scale-[1.02] active:scale-[0.98]"
+            className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-xs sm:text-sm font-bold text-accent-ink shadow-lg shadow-accent/25 transition-all hover:bg-accent-hover hover:scale-[1.02] active:scale-[0.98]"
           >
             <Plus className="h-4 w-4" />
             <span>Add Your Site</span>

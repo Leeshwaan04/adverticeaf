@@ -306,7 +306,7 @@ export default function BoardPage() {
       <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e2573f]/15 px-3 py-1 text-xs font-semibold text-[#e2573f]">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold text-accent border border-accent/20">
               <Sparkles className="h-3.5 w-3.5" />
               Live Attention Market
             </span>
@@ -324,7 +324,7 @@ export default function BoardPage() {
           <Button
             variant="primary"
             onClick={openBidNew}
-            className="flex items-center gap-2 bg-[#e2573f] hover:bg-[#cf4b34] text-white shadow-lg shadow-[#e2573f]/25 border-none"
+            className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-accent-ink font-bold shadow-lg shadow-accent/25 border-none"
           >
             <Plus className="h-4 w-4" />
             Add Your Link
@@ -342,7 +342,7 @@ export default function BoardPage() {
       <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="rounded-2xl border border-line bg-surface/50 p-4 backdrop-blur-sm">
           <div className="flex items-center gap-2 text-xs font-medium text-muted">
-            <Globe className="h-3.5 w-3.5 text-[#e2573f]" />
+            <Globe className="h-3.5 w-3.5 text-accent" />
             Listings Ranked
           </div>
           <p className="mt-2 text-2xl font-bold tracking-tight text-fg font-display">
@@ -360,7 +360,7 @@ export default function BoardPage() {
         </div>
         <div className="rounded-2xl border border-line bg-surface/50 p-4 backdrop-blur-sm">
           <div className="flex items-center gap-2 text-xs font-medium text-muted">
-            <MousePointerClick className="h-3.5 w-3.5 text-[#e2573f]" />
+            <MousePointerClick className="h-3.5 w-3.5 text-accent" />
             Clicks Delivered
           </div>
           <p className="mt-2 text-2xl font-bold tracking-tight text-fg font-display">
@@ -372,7 +372,7 @@ export default function BoardPage() {
             <Crown className="h-3.5 w-3.5 text-amber-400" />
             Cost to Take #1
           </div>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-[#e2573f] font-display">
+          <p className="mt-2 text-2xl font-bold tracking-tight text-accent font-display">
             {snapshot ? formatUsd(snapshot.leadCostCents) : "..."}
           </p>
         </div>
@@ -392,7 +392,7 @@ export default function BoardPage() {
                   onClick={() => setSeason(s.id)}
                   className={`rounded-lg px-3.5 py-1.5 text-xs sm:text-sm font-medium transition-all ${
                     active
-                      ? "bg-[#e2573f] text-white shadow-sm font-semibold"
+                      ? "bg-accent text-accent-ink shadow-sm font-bold"
                       : "text-muted hover:text-fg"
                   }`}
                 >
@@ -404,7 +404,7 @@ export default function BoardPage() {
 
           {getSeasonResetLabel(season, now) && (
             <span className="inline-flex items-center gap-1 rounded-lg border border-line/50 bg-surface/60 px-2.5 py-1 text-xs font-medium text-muted">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+              <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
               {getSeasonResetLabel(season, now)}
             </span>
           )}
@@ -419,7 +419,7 @@ export default function BoardPage() {
             <button
               type="button"
               onClick={() => handleNavSelect("all")}
-              className="text-[#e2573f] hover:underline"
+              className="text-accent hover:underline"
             >
               Reset
             </button>

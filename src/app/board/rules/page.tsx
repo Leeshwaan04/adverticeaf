@@ -24,7 +24,7 @@ export default function RulesPage() {
       </div>
 
       <div className="border-b border-line pb-8">
-        <div className="inline-flex items-center gap-2 rounded-full bg-[#e2573f]/15 px-3 py-1 text-xs font-semibold text-[#e2573f]">
+        <div className="inline-flex items-center gap-2 rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold text-accent border border-accent/20">
           <Crown className="h-3.5 w-3.5" />
           Game Rules
         </div>
@@ -49,7 +49,7 @@ export default function RulesPage() {
         </div>
 
         <div className="rounded-2xl border border-line bg-surface/50 p-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e2573f]/20 text-[#e2573f]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/20 text-accent">
             <Flame className="h-5 w-5" />
           </div>
           <h3 className="mt-3 text-base font-bold text-fg">Instant Outbids</h3>
@@ -143,7 +143,7 @@ export default function RulesPage() {
       </div>
 
       <div className="mt-12 flex items-center justify-between border-t border-line pt-6">
-        <Link href="/" className="text-sm font-semibold text-[#e2573f] hover:underline">
+        <Link href="/" className="text-sm font-semibold text-accent hover:underline">
           &larr; Back to Leaderboard
         </Link>
         <Link href="/terms" className="text-xs text-muted hover:text-fg">

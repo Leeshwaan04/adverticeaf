@@ -14,7 +14,7 @@ export default function TermsPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
       <div className="border-b border-line pb-8">
-        <span className="text-xs font-bold uppercase tracking-wider text-[#e2573f]">Legal</span>
+        <span className="text-xs font-bold uppercase tracking-wider text-accent">Legal</span>
         <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-fg sm:text-4xl font-display">
           Terms of Use
         </h1>
@@ -85,7 +85,7 @@ export default function TermsPage() {
         </section>
 
         <div className="border-t border-line pt-6">
-          <Link href="/" className="text-sm font-semibold text-[#e2573f] hover:underline">
+          <Link href="/" className="text-sm font-semibold text-accent hover:underline">
             &larr; Return to Leaderboard
           </Link>
         </div>

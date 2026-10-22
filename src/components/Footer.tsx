@@ -32,7 +32,7 @@ export default function Footer() {
             {SITE.contactEmail && (
               <a
                 href={`mailto:${SITE.contactEmail}`}
-                className="mt-4 inline-block text-sm text-[#e2573f] underline underline-offset-2 hover:text-[#cf4b34]"
+                className="mt-4 inline-block text-sm text-accent underline underline-offset-2 hover:text-accent-hover"
               >
                 {SITE.contactEmail}
               </a>

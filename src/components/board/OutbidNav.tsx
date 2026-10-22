@@ -51,7 +51,7 @@ export default function OutbidNav({ activeTab, onSelect, className = "" }: Props
       className={`w-full overflow-x-auto no-scrollbar py-2 ${className}`}
     >
       <div className="mx-auto flex w-max items-center justify-center">
-        <div className="flex items-center gap-1 rounded-full border border-[#2f2723] bg-[#181513]/95 p-1.5 shadow-2xl backdrop-blur-md">
+        <div className="flex items-center gap-1 rounded-full border border-line bg-surface/95 p-1.5 shadow-2xl backdrop-blur-md">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -61,15 +61,15 @@ export default function OutbidNav({ activeTab, onSelect, className = "" }: Props
                 key={item.id}
                 type="button"
                 onClick={() => onSelect(item.id)}
-                className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium transition-all whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e2573f] ${
+                className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium transition-all whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                   isActive
-                    ? "bg-[#e2573f] text-white shadow-md shadow-[#e2573f]/25 font-semibold"
-                    : "text-[#a89b91] hover:text-white hover:bg-white/5"
+                    ? "bg-accent text-accent-ink shadow-md shadow-accent/25 font-bold"
+                    : "text-muted hover:text-fg hover:bg-raised/60"
                 }`}
               >
                 <Icon
                   className={`h-3.5 w-3.5 shrink-0 ${
-                    isActive ? "text-white" : "text-[#cb7b56]"
+                    isActive ? "text-accent-ink" : "text-accent"
                   }`}
                 />
                 <span>{item.label}</span>
