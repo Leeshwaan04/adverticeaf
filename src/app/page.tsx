@@ -145,6 +145,27 @@ export default function BoardPage() {
     amountCents: number;
   } | null>(null);
 
+  // Check for successful return from Dodo Payments checkout
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get("checkout");
+    const domain = params.get("domain");
+
+    if (checkout === "success" && domain) {
+      api.getListing(domain).then((detail) => {
+        if (detail) {
+          setSuccessItem({
+            listing: detail.listing,
+            rank: detail.ranks.all.rank ?? 1,
+            amountCents: detail.ranks.all.totalCents,
+          });
+        }
+      });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
   // Share card modal state
   const [shareTarget, setShareTarget] = useState<{
     listing: Listing;

@@ -3,6 +3,7 @@ import { boardStats, costToLead, rankListings, seasonWindow } from "../src/lib/b
 import type { ActivityItem, Bid, BoardSnapshot, HallOfFame, Listing } from "../src/lib/board/types";
 import { checkListingUrl } from "../src/lib/board/listing";
 import { buildSeed } from "../src/lib/board/demo";
+import { verifyWebhook } from "./payments.ts";
 
 export interface BoardEnv {
   PROMOTIONS_DB?: {
@@ -14,6 +15,11 @@ export interface BoardEnv {
       };
     };
   };
+  DODO_PAYMENTS_API_KEY?: string;
+  DODO_PRODUCT_ID?: string;
+  DODO_PAYMENTS_WEBHOOK_KEY?: string;
+  DODO_PAYMENTS_ENVIRONMENT?: "test_mode" | "live_mode";
+  PAYMENTS_SITE_URL?: string;
 }
 
 let initialized = false;
@@ -183,6 +189,58 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
       return json({ ok: false, error: "Missing listing information." }, 400);
     }
 
+    // If live Dodo Payments is configured in Cloudflare environment, create a hosted checkout session
+    if (env?.DODO_PAYMENTS_API_KEY && env?.DODO_PRODUCT_ID) {
+      const host = env.DODO_PAYMENTS_ENVIRONMENT === "test_mode" ? "test" : "live";
+      const siteUrl = env.PAYMENTS_SITE_URL || "https://adverticeaf.com";
+
+      try {
+        const dodoRes = await fetch(`https://${host}.dodopayments.com/checkouts`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${env.DODO_PAYMENTS_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            product_cart: [
+              {
+                product_id: env.DODO_PRODUCT_ID,
+                quantity: 1,
+                amount: amountCents,
+              },
+            ],
+            billing_currency: "USD",
+            metadata: {
+              domain: targetListing.domain,
+              name: targetListing.name,
+              url: targetListing.url,
+              category: targetListing.category,
+              tagline: targetListing.tagline,
+              amountCents: String(amountCents),
+            },
+            return_url: `${siteUrl}/?checkout=success&domain=${encodeURIComponent(targetListing.domain)}`,
+            cancel_url: `${siteUrl}/?checkout=cancelled`,
+          }),
+        });
+
+        if (dodoRes.ok) {
+          const data = (await dodoRes.json()) as { checkout_url?: string };
+          if (data.checkout_url) {
+            return json({
+              ok: true,
+              checkoutUrl: data.checkout_url,
+              listing: targetListing,
+            });
+          }
+        } else {
+          const errText = await dodoRes.text().catch(() => "");
+          console.error("Dodo checkout error response:", dodoRes.status, errText);
+        }
+      } catch (err) {
+        console.error("Dodo checkout request failed:", err);
+      }
+    }
+
     const bidId = `bid_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const newBid: Bid = {
       id: bidId,
@@ -198,6 +256,69 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
       bid: newBid,
       listing: targetListing,
     });
+  }
+
+  // POST /v1/webhook (Dodo Payments webhook for live payment fulfillment)
+  if (path === "/webhook" && request.method === "POST") {
+    const rawBody = await request.text();
+    if (env?.DODO_PAYMENTS_WEBHOOK_KEY) {
+      const verified = await verifyWebhook(rawBody, request.headers, env.DODO_PAYMENTS_WEBHOOK_KEY, now);
+      if (!verified) {
+        return json({ error: "Invalid webhook signature" }, 401);
+      }
+    }
+
+    try {
+      const event = JSON.parse(rawBody) as {
+        type?: string;
+        data?: {
+          metadata?: {
+            domain?: string;
+            name?: string;
+            url?: string;
+            category?: BoardCategory;
+            tagline?: string;
+            amountCents?: string;
+          };
+          total_amount?: number;
+        };
+      };
+
+      const meta = event.data?.metadata;
+      const domain = meta?.domain;
+
+      if (event.type === "payment.succeeded" && typeof domain === "string" && domain.length > 0 && meta) {
+        const amount = event.data?.total_amount ?? parseInt(meta.amountCents || "0", 10);
+
+        let listing = globalListings.find((l) => l.domain === domain);
+        if (!listing && meta.url) {
+          const newListing: Listing = {
+            domain,
+            name: meta.name || domain,
+            url: meta.url,
+            category: meta.category || "Marketing",
+            tagline: meta.tagline || "",
+            createdAt: now,
+            verified: false,
+          };
+          listing = newListing;
+          globalListings.unshift(newListing);
+        }
+
+        if (amount > 0) {
+          globalBids.push({
+            id: `bid_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            domain,
+            amountCents: amount,
+            at: now,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Error processing Dodo webhook:", err);
+    }
+
+    return json({ ok: true });
   }
 
   // POST /v1/clicks
