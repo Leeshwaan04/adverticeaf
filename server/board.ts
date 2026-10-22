@@ -1,8 +1,9 @@
-import { BOARD_CATEGORIES, RULES, type BoardCategory, type SeasonId } from "../src/lib/board/config";
-import { boardStats, costToLead, rankListings, seasonWindow } from "../src/lib/board/rules";
-import type { ActivityItem, Bid, BoardSnapshot, HallOfFame, Listing } from "../src/lib/board/types";
-import { checkListingUrl } from "../src/lib/board/listing";
-import { buildSeed } from "../src/lib/board/demo";
+import { BOARD_CATEGORIES, RULES, type BoardCategory, type SeasonId } from "../src/lib/board/config.ts";
+import { boardStats, costToLead, rankListings, seasonWindow } from "../src/lib/board/rules.ts";
+import type { ActivityItem, Bid, BoardSnapshot, HallOfFame, Listing } from "../src/lib/board/types.ts";
+import { formatUsd } from "../src/lib/board/format.ts";
+import { checkListingUrl } from "../src/lib/board/listing.ts";
+import { buildSeed } from "../src/lib/board/demo.ts";
 import { verifyWebhook } from "./payments.ts";
 
 export interface BoardEnv {
@@ -13,6 +14,9 @@ export interface BoardEnv {
         all<T>(): Promise<{ results: T[] }>;
         run(): Promise<unknown>;
       };
+      first<T>(): Promise<T | null>;
+      all<T>(): Promise<{ results: T[] }>;
+      run(): Promise<unknown>;
     };
   };
   DODO_PAYMENTS_API_KEY?: string;
@@ -20,6 +24,8 @@ export interface BoardEnv {
   DODO_PAYMENTS_WEBHOOK_KEY?: string;
   DODO_PAYMENTS_ENVIRONMENT?: "test_mode" | "live_mode";
   PAYMENTS_SITE_URL?: string;
+  RESEND_API_KEY?: string;
+  ALERT_WEBHOOK_URL?: string;
 }
 
 const DEFAULT_DODO_KEY = "Tdh6Zyiipg1A76MP.qcji7BYmwcKJf75sjhQOR3r3V6SQKB2pVTGYCs9y3GJmBF-w";
@@ -27,9 +33,12 @@ const DEFAULT_PRODUCT_ID = "pdt_0NqIgdtfqfzuWtAc5O3Yk";
 const DEFAULT_WEBHOOK_KEY = "whsec_GOO7ceG30ScogOoiB9oHVcffrFMyIYyv";
 
 let initialized = false;
+let dbInitialized = false;
 let globalListings: Listing[] = [];
 let globalBids: Bid[] = [];
 let globalClicks: Record<string, number> = {};
+const globalAlerts: Record<string, string[]> = {};
+const globalVerifications: Record<string, { token: string; verified: boolean }> = {};
 
 function ensureInit(now: number) {
   if (initialized && globalListings.length > 0) return;
@@ -38,6 +47,327 @@ function ensureInit(now: number) {
   globalBids = seed.bids.map((b) => ({ ...b, sample: undefined }));
   globalClicks = { ...seed.clicks };
   initialized = true;
+}
+
+async function syncD1(env: BoardEnv | undefined, now: number) {
+  if (!env?.PROMOTIONS_DB) return;
+
+  try {
+    if (!dbInitialized) {
+      await env.PROMOTIONS_DB.prepare(`
+        CREATE TABLE IF NOT EXISTS board_listings (
+          domain TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          url TEXT NOT NULL,
+          category TEXT NOT NULL,
+          tagline TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          verified INTEGER NOT NULL DEFAULT 0
+        );
+      `).run().catch(() => {});
+
+      await env.PROMOTIONS_DB.prepare(`
+        CREATE TABLE IF NOT EXISTS board_bids (
+          id TEXT PRIMARY KEY,
+          domain TEXT NOT NULL,
+          amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+          created_at INTEGER NOT NULL
+        );
+      `).run().catch(() => {});
+
+      await env.PROMOTIONS_DB.prepare(`
+        CREATE TABLE IF NOT EXISTS board_clicks (
+          domain TEXT PRIMARY KEY,
+          count INTEGER NOT NULL DEFAULT 0
+        );
+      `).run().catch(() => {});
+
+      await env.PROMOTIONS_DB.prepare(`
+        CREATE TABLE IF NOT EXISTS board_alerts (
+          id TEXT PRIMARY KEY,
+          domain TEXT NOT NULL,
+          email TEXT NOT NULL,
+          created_at INTEGER NOT NULL
+        );
+      `).run().catch(() => {});
+
+      await env.PROMOTIONS_DB.prepare(`
+        CREATE TABLE IF NOT EXISTS board_verifications (
+          domain TEXT PRIMARY KEY,
+          token TEXT NOT NULL,
+          verified INTEGER NOT NULL DEFAULT 0,
+          created_at INTEGER NOT NULL
+        );
+      `).run().catch(() => {});
+
+      dbInitialized = true;
+    }
+
+    const countRes = await env.PROMOTIONS_DB.prepare("SELECT COUNT(*) as cnt FROM board_listings").first<{ cnt: number }>().catch(() => null);
+    if (!countRes || countRes.cnt === 0) {
+      const seed = buildSeed(now);
+      for (const l of seed.listings) {
+        await env.PROMOTIONS_DB.prepare(
+          "INSERT OR IGNORE INTO board_listings (domain, name, url, category, tagline, created_at, verified) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        ).bind(l.domain, l.name, l.url, l.category, l.tagline, l.createdAt, l.verified ? 1 : 0).run().catch(() => {});
+      }
+      for (const b of seed.bids) {
+        await env.PROMOTIONS_DB.prepare(
+          "INSERT OR IGNORE INTO board_bids (id, domain, amount_cents, created_at) VALUES (?, ?, ?, ?)"
+        ).bind(b.id, b.domain, b.amountCents, b.at).run().catch(() => {});
+      }
+      for (const [dom, cnt] of Object.entries(seed.clicks)) {
+        await env.PROMOTIONS_DB.prepare(
+          "INSERT OR REPLACE INTO board_clicks (domain, count) VALUES (?, ?)"
+        ).bind(dom, cnt).run().catch(() => {});
+      }
+    }
+
+    const listingsRes = await env.PROMOTIONS_DB.prepare(
+      "SELECT domain, name, url, category, tagline, created_at as createdAt, verified FROM board_listings"
+    ).all<{ domain: string; name: string; url: string; category: string; tagline: string; createdAt: number; verified: number }>().catch(() => null);
+
+    if (listingsRes?.results && listingsRes.results.length > 0) {
+      globalListings = listingsRes.results.map((r) => ({
+        domain: r.domain,
+        name: r.name,
+        url: r.url,
+        category: (r.category as BoardCategory) || "Other",
+        tagline: r.tagline || "",
+        createdAt: r.createdAt || now,
+        verified: Boolean(r.verified),
+      }));
+    }
+
+    const bidsRes = await env.PROMOTIONS_DB.prepare(
+      "SELECT id, domain, amount_cents as amountCents, created_at as at FROM board_bids ORDER BY created_at ASC"
+    ).all<Bid>().catch(() => null);
+
+    if (bidsRes?.results && bidsRes.results.length > 0) {
+      globalBids = bidsRes.results;
+    }
+
+    const clicksRes = await env.PROMOTIONS_DB.prepare(
+      "SELECT domain, count FROM board_clicks"
+    ).all<{ domain: string; count: number }>().catch(() => null);
+
+    if (clicksRes?.results) {
+      globalClicks = {};
+      for (const c of clicksRes.results) {
+        globalClicks[c.domain] = c.count;
+      }
+    }
+  } catch (err) {
+    console.error("D1 synchronization error:", err);
+  }
+}
+
+async function generateVerificationToken(domain: string, secret = "adv_salt_2026"): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(`${domain}:${secret}`);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `adv_${hex.slice(0, 16)}`;
+}
+
+function escapeXml(unsafe: string): string {
+  return unsafe.replace(/[<>&'"]/g, (c) => {
+    switch (c) {
+      case "<": return "&lt;";
+      case ">": return "&gt;";
+      case "&": return "&amp;";
+      case "'": return "&apos;";
+      case '"': return "&quot;";
+      default: return c;
+    }
+  });
+}
+
+function renderOgSvg(params: {
+  domain: string;
+  name: string;
+  rank: number;
+  spent: string;
+  clicks: number;
+  tagline: string;
+  category: string;
+}): string {
+  const isTop1 = params.rank === 1;
+  const rankColor = isTop1 ? "#fbbf24" : "#22d3ee";
+  const rankBg = isTop1 ? "rgba(251, 191, 36, 0.15)" : "rgba(34, 211, 238, 0.15)";
+  const rankBorder = isTop1 ? "rgba(251, 191, 36, 0.4)" : "rgba(34, 211, 238, 0.3)";
+  const badgeLabel = isTop1 ? "👑 #1 RANK · KING OF THE HILL" : `#${params.rank} RANK ON BOARD`;
+
+  const safeName = escapeXml(params.name);
+  const safeDomain = escapeXml(params.domain);
+  const safeTagline = escapeXml(params.tagline || "Live pay-to-rank public attention market");
+  const safeCategory = escapeXml(params.category || "Featured");
+  const safeSpent = escapeXml(params.spent);
+
+  return `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#030712" />
+      <stop offset="50%" stop-color="#0a1120" />
+      <stop offset="100%" stop-color="#030712" />
+    </linearGradient>
+    <radialGradient id="glow" cx="950" cy="140" r="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.22" />
+      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="cyanGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#22d3ee" />
+      <stop offset="100%" stop-color="#38bdf8" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <rect width="1200" height="630" fill="url(#glow)" />
+
+  <!-- Outer Frame -->
+  <rect x="24" y="24" width="1152" height="582" rx="24" fill="none" stroke="#1e293b" stroke-width="2" />
+  <rect x="24" y="24" width="8" height="582" rx="4" fill="#22d3ee" />
+
+  <!-- Top Header -->
+  <g transform="translate(64, 68)">
+    <circle cx="10" cy="10" r="8" fill="#22d3ee" />
+    <text x="28" y="16" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="800" fill="#f1f5f9" letter-spacing="-0.02em">adverticeaf</text>
+    <rect x="156" y="-2" width="220" height="28" rx="14" fill="rgba(34, 211, 238, 0.12)" stroke="rgba(34, 211, 238, 0.3)" stroke-width="1" />
+    <text x="172" y="16" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="700" fill="#22d3ee" letter-spacing="0.08em">LIVE ATTENTION MARKET</text>
+    <text x="1070" y="16" text-anchor="end" font-family="system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#64748b">adverticeaf.com/board</text>
+  </g>
+
+  <!-- Rank Badge -->
+  <g transform="translate(64, 140)">
+    <rect x="0" y="0" width="340" height="42" rx="21" fill="${rankBg}" stroke="${rankBorder}" stroke-width="1.5" />
+    <text x="24" y="26" font-family="system-ui, -apple-system, sans-serif" font-size="15" font-weight="800" fill="${rankColor}" letter-spacing="0.05em">${badgeLabel}</text>
+  </g>
+
+  <!-- Listing Name & Domain -->
+  <g transform="translate(64, 240)">
+    <text x="0" y="0" font-family="system-ui, -apple-system, sans-serif" font-size="52" font-weight="900" fill="#ffffff" letter-spacing="-0.03em">${safeName}</text>
+    <rect x="0" y="20" width="${Math.min(safeDomain.length * 11 + 32, 400)}" height="32" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1" />
+    <text x="14" y="41" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="600" fill="#94a3b8">${safeDomain}</text>
+    <text x="0" y="94" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="500" fill="#94a3b8">${safeTagline}</text>
+  </g>
+
+  <!-- Bottom Metric Cards -->
+  <g transform="translate(64, 460)">
+    <!-- Metric 1: Spend -->
+    <rect x="0" y="0" width="220" height="90" rx="16" fill="#0b1324" stroke="#1e293b" stroke-width="1" />
+    <text x="20" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="700" fill="#64748b" letter-spacing="0.06em">TOTAL BID VOLUME</text>
+    <text x="20" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="900" fill="#22d3ee">${safeSpent}</text>
+
+    <!-- Metric 2: Clicks -->
+    <rect x="240" y="0" width="200" height="90" rx="16" fill="#0b1324" stroke="#1e293b" stroke-width="1" />
+    <text x="260" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="700" fill="#64748b" letter-spacing="0.06em">CLICKS DELIVERED</text>
+    <text x="260" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="900" fill="#f1f5f9">${params.clicks}</text>
+
+    <!-- Metric 3: Category -->
+    <rect x="460" y="0" width="220" height="90" rx="16" fill="#0b1324" stroke="#1e293b" stroke-width="1" />
+    <text x="480" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="700" fill="#64748b" letter-spacing="0.06em">CATEGORY</text>
+    <text x="480" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="800" fill="#f1f5f9">${safeCategory}</text>
+
+    <!-- Call to action pill right aligned -->
+    <rect x="780" y="16" width="290" height="58" rx="29" fill="url(#cyanGrad)" />
+    <text x="925" y="51" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="17" font-weight="800" fill="#04141a">Outbid &amp; Claim Spot &rarr;</text>
+  </g>
+</svg>`;
+}
+
+async function notifyOutbid(
+  env: BoardEnv | undefined,
+  overtakenDomains: string[],
+  bidderDomain: string,
+  bidderName: string,
+  now: number
+) {
+  for (const domain of overtakenDomains) {
+    const emails = new Set<string>();
+    const inMem = globalAlerts[domain];
+    if (inMem) {
+      for (const e of inMem) emails.add(e);
+    }
+
+    if (env?.PROMOTIONS_DB) {
+      const dbAlerts = await env.PROMOTIONS_DB.prepare(
+        "SELECT email FROM board_alerts WHERE domain = ?"
+      ).bind(domain).all<{ email: string }>().catch(() => null);
+      if (dbAlerts?.results) {
+        for (const row of dbAlerts.results) emails.add(row.email);
+      }
+    }
+
+    if (emails.size === 0) continue;
+
+    console.log(`[Outbid Alert] ${domain} overtaken by ${bidderName} (${bidderDomain}). Alerting: ${Array.from(emails).join(", ")}`);
+
+    if (env?.RESEND_API_KEY) {
+      for (const email of emails) {
+        try {
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${env.RESEND_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: "AdverticeAF Alerts <alerts@adverticeaf.com>",
+              to: email,
+              subject: `⚡ You've been outbid by ${bidderName} on AdverticeAF!`,
+              html: `
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #030712; color: #f1f5f9; padding: 36px 24px; border-radius: 12px; max-width: 540px; margin: 0 auto; border: 1px solid #1e293b;">
+                  <div style="display: inline-block; padding: 4px 10px; background-color: rgba(34, 211, 238, 0.15); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 9999px; font-size: 11px; font-weight: 700; color: #22d3ee; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 16px;">
+                    Live Attention Market
+                  </div>
+                  <h2 style="margin: 0 0 12px; font-size: 22px; font-weight: 800; color: #ffffff;">
+                    ⚡ You just got outbid!
+                  </h2>
+                  <p style="margin: 0 0 16px; font-size: 14px; line-height: 1.6; color: #94a3b8;">
+                    <strong>${bidderName}</strong> (${bidderDomain}) just placed a bid and moved ahead of <strong>${domain}</strong> on the public leaderboard.
+                  </p>
+                  <p style="margin: 0 0 24px; font-size: 14px; line-height: 1.6; color: #94a3b8;">
+                    Protect your placement and reclaim your traffic in 1 click:
+                  </p>
+                  <div>
+                    <a href="https://adverticeaf.com/?bid=${encodeURIComponent(domain)}" style="display: inline-block; background-color: #22d3ee; color: #04141a; font-weight: 800; font-size: 14px; padding: 12px 24px; border-radius: 10px; text-decoration: none; box-shadow: 0 4px 14px rgba(34, 211, 238, 0.35);">
+                      Reclaim Your Rank &rarr;
+                    </a>
+                  </div>
+                  <hr style="border: none; border-top: 1px solid #1e293b; margin: 32px 0 16px;" />
+                  <p style="margin: 0; font-size: 11px; color: #64748b;">
+                    You received this alert because you subscribed to notifications for ${domain} on AdverticeAF.
+                  </p>
+                </div>
+              `,
+            }),
+          });
+        } catch (err) {
+          console.error("Failed to send Resend outbid email:", err);
+        }
+      }
+    }
+
+    if (env?.ALERT_WEBHOOK_URL) {
+      try {
+        await fetch(env.ALERT_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event: "board.outbid",
+            overtakenDomain: domain,
+            bidderDomain,
+            bidderName,
+            at: now,
+          }),
+        });
+      } catch (err) {
+        console.error("Failed to dispatch alert webhook:", err);
+      }
+    }
+  }
 }
 
 function json(data: unknown, status = 200) {
@@ -54,9 +384,8 @@ function json(data: unknown, status = 200) {
 }
 
 export async function handleBoardRequest(request: Request, env?: BoardEnv): Promise<Response> {
-  void env;
   const url = new URL(request.url);
-  const path = url.pathname.replace(/^\/v1/, "").replace(/\/$/, "");
+  const path = url.pathname.replace(/^\/(v1|api)/, "").replace(/\/$/, "");
 
   if (request.method === "OPTIONS") {
     return new Response(null, {
@@ -71,6 +400,11 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
 
   const now = Date.now();
   ensureInit(now);
+
+  // Sync with persistent Cloudflare D1 database if bound
+  if (env?.PROMOTIONS_DB) {
+    await syncD1(env, now);
+  }
 
   // GET /v1/board
   if (path === "/board" && request.method === "GET") {
@@ -103,6 +437,41 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
     return json(snapshot);
   }
 
+  // GET /v1/og (Dynamic OpenGraph & Twitter Social Card Generator)
+  if (path === "/og" && request.method === "GET") {
+    const domain = url.searchParams.get("domain") || "adverticeaf.com";
+    const listing = globalListings.find((l) => l.domain === domain);
+    const window = seasonWindow("all", now);
+    const rows = rankListings(globalListings, globalBids, globalClicks, window, null, now);
+    const row = rows.find((r) => r.listing.domain === domain);
+
+    const rank = parseInt(url.searchParams.get("rank") || String(row?.rank || 1), 10);
+    const name = url.searchParams.get("name") || listing?.name || domain;
+    const spent = url.searchParams.get("spent") || (row ? formatUsd(row.totalCents) : "$1,500");
+    const clicks = row ? row.clicks : globalClicks[domain] || 42;
+    const tagline = url.searchParams.get("tagline") || listing?.tagline || "Live pay-to-rank public leaderboard";
+    const cat = url.searchParams.get("category") || listing?.category || "Leaderboard";
+
+    const svg = renderOgSvg({
+      domain,
+      name,
+      rank,
+      spent,
+      clicks,
+      tagline,
+      category: cat,
+    });
+
+    return new Response(svg, {
+      status: 200,
+      headers: {
+        "Content-Type": "image/svg+xml; charset=utf-8",
+        "Cache-Control": "public, max-age=300, s-maxage=3600",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+  }
+
   // POST /v1/quote
   if (path === "/quote" && request.method === "POST") {
     const body = await request.json().catch(() => ({})) as {
@@ -127,7 +496,6 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
     const currentTotal = existingRow ? existingRow.totalCents : 0;
     const newTotal = currentTotal + amountCents;
 
-    // Projected rank calculation
     let newRank = 1;
     for (const r of rows) {
       if (existingRow && r.listing.domain === existingRow.listing.domain) continue;
@@ -145,10 +513,168 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
     });
   }
 
+  // POST /v1/alerts (Outbid Email Alert Subscription)
+  if (path === "/alerts" && request.method === "POST") {
+    const body = await request.json().catch(() => ({})) as { domain?: string; email?: string };
+    const domain = typeof body.domain === "string" ? body.domain.trim().toLowerCase() : "";
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+
+    if (!domain || !email || !email.includes("@") || email.length < 5) {
+      return json({ ok: false, error: "Please provide a valid domain and email address." }, 400);
+    }
+
+    if (!globalAlerts[domain]) {
+      globalAlerts[domain] = [];
+    }
+    if (!globalAlerts[domain].includes(email)) {
+      globalAlerts[domain].push(email);
+    }
+
+    if (env?.PROMOTIONS_DB) {
+      const alertId = `alt_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      await env.PROMOTIONS_DB.prepare(
+        "INSERT INTO board_alerts (id, domain, email, created_at) VALUES (?, ?, ?, ?)"
+      ).bind(alertId, domain, email, now).run().catch(console.error);
+    }
+
+    return json({ ok: true, message: `Subscribed ${email} to outbid alerts for ${domain}` });
+  }
+
+  // GET /v1/verification (Retrieve verification methods and token)
+  if (path === "/verification" && request.method === "GET") {
+    const domain = (url.searchParams.get("domain") || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+    if (!domain) {
+      return json({ error: "Missing domain parameter." }, 400);
+    }
+
+    const listing = globalListings.find((l) => l.domain === domain);
+    const isVerified = Boolean(listing?.verified);
+    let token = globalVerifications[domain]?.token;
+    if (!token) {
+      token = await generateVerificationToken(domain);
+      globalVerifications[domain] = { token, verified: isVerified };
+    }
+
+    return json({
+      verified: isVerified,
+      token,
+      methods: [
+        {
+          type: "dns",
+          instruction: `Add a DNS TXT record for _adverticeaf-verify.${domain} (or ${domain}) with this value:`,
+          value: `adverticeaf-verify=${token}`,
+        },
+        {
+          type: "meta",
+          instruction: `Add this HTML tag inside the <head> of https://${domain}/ and publish it:`,
+          value: `<meta name="adverticeaf-verification" content="${token}" />`,
+        },
+      ],
+    });
+  }
+
+  // POST /v1/verification/check (Verify domain ownership via Cloudflare DoH & HTML Meta)
+  if (path === "/verification/check" && request.method === "POST") {
+    const body = await request.json().catch(() => ({})) as { domain?: string };
+    const domain = (typeof body.domain === "string" ? body.domain : "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+
+    if (!domain) {
+      return json({ verified: false, message: "Missing domain to verify." }, 400);
+    }
+
+    let token = globalVerifications[domain]?.token;
+    if (!token) {
+      token = await generateVerificationToken(domain);
+      globalVerifications[domain] = { token, verified: false };
+    }
+
+    let verified = false;
+
+    // 1. Check DNS TXT records via Cloudflare DoH
+    try {
+      const dohUrls = [
+        `https://cloudflare-dns.com/dns-query?name=_adverticeaf-verify.${domain}&type=TXT`,
+        `https://cloudflare-dns.com/dns-query?name=${domain}&type=TXT`,
+      ];
+
+      for (const dohUrl of dohUrls) {
+        if (verified) break;
+        const dohRes = await fetch(dohUrl, {
+          headers: { Accept: "application/dns-json" },
+          signal: AbortSignal.timeout(4000),
+        });
+        if (dohRes.ok) {
+          const data = (await dohRes.json()) as { Answer?: Array<{ data?: string }> };
+          if (Array.isArray(data.Answer)) {
+            for (const ans of data.Answer) {
+              const txt = ans.data || "";
+              if (txt.includes(token) || txt.includes(`adverticeaf-verify=${token}`)) {
+                verified = true;
+                break;
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // Continue to meta tag check
+    }
+
+    // 2. If DNS is not found yet, check HTML meta tag on https://${domain}
+    if (!verified) {
+      try {
+        const pageRes = await fetch(`https://${domain}`, {
+          headers: { "User-Agent": "AdverticeAF-Verifier/1.0" },
+          signal: AbortSignal.timeout(4000),
+        });
+        if (pageRes.ok) {
+          const html = await pageRes.text();
+          if (
+            html.includes(token) &&
+            (html.includes("adverticeaf-verification") || html.includes("adverticeaf-verify"))
+          ) {
+            verified = true;
+          }
+        }
+      } catch {
+        // Fall back to unverified
+      }
+    }
+
+    if (verified) {
+      const listing = globalListings.find((l) => l.domain === domain);
+      if (listing) {
+        listing.verified = true;
+      }
+      globalVerifications[domain] = { token, verified: true };
+
+      if (env?.PROMOTIONS_DB) {
+        await env.PROMOTIONS_DB.prepare(
+          "UPDATE board_listings SET verified = 1 WHERE domain = ?"
+        ).bind(domain).run().catch(console.error);
+
+        await env.PROMOTIONS_DB.prepare(
+          "INSERT OR REPLACE INTO board_verifications (domain, token, verified, created_at) VALUES (?, ?, 1, ?)"
+        ).bind(domain, token, now).run().catch(console.error);
+      }
+
+      return json({
+        verified: true,
+        message: "Domain ownership verified! Your verified badge is now active on the board.",
+      });
+    }
+
+    return json({
+      verified: false,
+      message: "Verification record not detected yet. DNS changes can take 1-5 minutes to propagate across the internet.",
+    });
+  }
+
   // POST /v1/bids
   if (path === "/bids" && request.method === "POST") {
     const body = await request.json().catch(() => ({})) as {
       domain?: string;
+      email?: string;
       newListing?: {
         url: string;
         name: string;
@@ -183,6 +709,12 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
           verified: false,
         };
         globalListings.unshift(targetListing);
+
+        if (env?.PROMOTIONS_DB) {
+          await env.PROMOTIONS_DB.prepare(
+            "INSERT OR IGNORE INTO board_listings (domain, name, url, category, tagline, created_at, verified) VALUES (?, ?, ?, ?, ?, ?, 0)"
+          ).bind(targetListing.domain, targetListing.name, targetListing.url, targetListing.category, targetListing.tagline, targetListing.createdAt).run().catch(console.error);
+        }
       }
     } else if (body.domain) {
       targetListing = globalListings.find((l) => l.domain === body.domain);
@@ -191,6 +723,17 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
 
     if (!targetListing) {
       return json({ ok: false, error: "Missing listing information." }, 400);
+    }
+
+    if (body.email && body.email.includes("@")) {
+      const email = body.email.trim().toLowerCase();
+      if (!globalAlerts[targetListing.domain]) globalAlerts[targetListing.domain] = [];
+      if (!globalAlerts[targetListing.domain].includes(email)) globalAlerts[targetListing.domain].push(email);
+      if (env?.PROMOTIONS_DB) {
+        await env.PROMOTIONS_DB.prepare(
+          "INSERT INTO board_alerts (id, domain, email, created_at) VALUES (?, ?, ?, ?)"
+        ).bind(`alt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, targetListing.domain, email, now).run().catch(console.error);
+      }
     }
 
     // If live Dodo Payments is configured in Cloudflare environment or defaults, create a hosted checkout session
@@ -225,6 +768,7 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
               category: targetListing.category,
               tagline: targetListing.tagline,
               amountCents: String(amountCents),
+              email: body.email || "",
             },
             return_url: `${siteUrl}/?checkout=success&domain=${encodeURIComponent(targetListing.domain)}`,
             cancel_url: `${siteUrl}/?checkout=cancelled`,
@@ -249,6 +793,11 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
       }
     }
 
+    // Direct fulfillment fallback
+    const window = seasonWindow("all", now);
+    const prevRanks = rankListings(globalListings, globalBids, globalClicks, window, null, now);
+    const prevRankMap = new Map(prevRanks.map((r) => [r.listing.domain, r.rank]));
+
     const bidId = `bid_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const newBid: Bid = {
       id: bidId,
@@ -258,6 +807,29 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
     };
 
     globalBids.push(newBid);
+
+    if (env?.PROMOTIONS_DB) {
+      await env.PROMOTIONS_DB.prepare(
+        "INSERT INTO board_bids (id, domain, amount_cents, created_at) VALUES (?, ?, ?, ?)"
+      ).bind(newBid.id, newBid.domain, newBid.amountCents, newBid.at).run().catch(console.error);
+    }
+
+    const nextRanks = rankListings(globalListings, globalBids, globalClicks, window, null, now);
+    const bidderRow = nextRanks.find((r) => r.listing.domain === newBid.domain);
+    const bidderRank = bidderRow?.rank ?? 999;
+
+    const overtaken: string[] = [];
+    for (const r of nextRanks) {
+      if (r.listing.domain === newBid.domain) continue;
+      const oldRank = prevRankMap.get(r.listing.domain);
+      if (oldRank !== undefined && r.rank > oldRank && r.rank > bidderRank) {
+        overtaken.push(r.listing.domain);
+      }
+    }
+
+    if (overtaken.length > 0) {
+      void notifyOutbid(env, overtaken, targetListing.domain, targetListing.name, now);
+    }
 
     return json({
       ok: true,
@@ -288,6 +860,7 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
             category?: BoardCategory;
             tagline?: string;
             amountCents?: string;
+            email?: string;
           };
           total_amount?: number;
         };
@@ -312,15 +885,61 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
           };
           listing = newListing;
           globalListings.unshift(newListing);
+
+          if (env?.PROMOTIONS_DB) {
+            await env.PROMOTIONS_DB.prepare(
+              "INSERT OR IGNORE INTO board_listings (domain, name, url, category, tagline, created_at, verified) VALUES (?, ?, ?, ?, ?, ?, 0)"
+            ).bind(newListing.domain, newListing.name, newListing.url, newListing.category, newListing.tagline, newListing.createdAt).run().catch(console.error);
+          }
+        }
+
+        if (meta.email && meta.email.includes("@")) {
+          const email = meta.email.trim().toLowerCase();
+          if (!globalAlerts[domain]) globalAlerts[domain] = [];
+          if (!globalAlerts[domain].includes(email)) globalAlerts[domain].push(email);
+          if (env?.PROMOTIONS_DB) {
+            await env.PROMOTIONS_DB.prepare(
+              "INSERT INTO board_alerts (id, domain, email, created_at) VALUES (?, ?, ?, ?)"
+            ).bind(`alt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, domain, email, now).run().catch(console.error);
+          }
         }
 
         if (amount > 0) {
-          globalBids.push({
-            id: `bid_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          const window = seasonWindow("all", now);
+          const prevRanks = rankListings(globalListings, globalBids, globalClicks, window, null, now);
+          const prevRankMap = new Map(prevRanks.map((r) => [r.listing.domain, r.rank]));
+
+          const bidId = `bid_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+          const newBid: Bid = {
+            id: bidId,
             domain,
             amountCents: amount,
             at: now,
-          });
+          };
+          globalBids.push(newBid);
+
+          if (env?.PROMOTIONS_DB) {
+            await env.PROMOTIONS_DB.prepare(
+              "INSERT INTO board_bids (id, domain, amount_cents, created_at) VALUES (?, ?, ?, ?)"
+            ).bind(newBid.id, newBid.domain, newBid.amountCents, newBid.at).run().catch(console.error);
+          }
+
+          const nextRanks = rankListings(globalListings, globalBids, globalClicks, window, null, now);
+          const bidderRow = nextRanks.find((r) => r.listing.domain === domain);
+          const bidderRank = bidderRow?.rank ?? 999;
+
+          const overtaken: string[] = [];
+          for (const r of nextRanks) {
+            if (r.listing.domain === domain) continue;
+            const oldRank = prevRankMap.get(r.listing.domain);
+            if (oldRank !== undefined && r.rank > oldRank && r.rank > bidderRank) {
+              overtaken.push(r.listing.domain);
+            }
+          }
+
+          if (overtaken.length > 0) {
+            void notifyOutbid(env, overtaken, domain, listing?.name || domain, now);
+          }
         }
       }
     } catch (err) {
@@ -335,6 +954,11 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
     const body = await request.json().catch(() => ({})) as { domain?: string };
     if (body.domain) {
       globalClicks[body.domain] = (globalClicks[body.domain] || 0) + 1;
+      if (env?.PROMOTIONS_DB) {
+        await env.PROMOTIONS_DB.prepare(
+          "INSERT INTO board_clicks (domain, count) VALUES (?, 1) ON CONFLICT(domain) DO UPDATE SET count = count + 1"
+        ).bind(body.domain).run().catch(console.error);
+      }
     }
     return json({ ok: true });
   }

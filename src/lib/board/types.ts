@@ -107,6 +107,7 @@ export type Quote =
 export interface BidRequest {
   /** Existing listing key, or a new listing to create with this bid. */
   domain?: string;
+  email?: string;
   newListing?: NewListingInput;
   amountCents: number;
   acceptedTerms: boolean;

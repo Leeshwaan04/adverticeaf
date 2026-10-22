@@ -15,6 +15,7 @@ import {
   TrendingUp,
   MousePointerClick,
   CheckCircle2,
+  ShieldCheck,
 } from "lucide-react";
 import Avatar from "@/components/board/Avatar";
 import CheckoutPanel from "@/components/board/CheckoutPanel";
@@ -24,6 +25,7 @@ import BadgeEmbed from "@/components/board/BadgeEmbed";
 import AlertOptIn from "@/components/board/AlertOptIn";
 import SuccessBurst from "@/components/board/SuccessBurst";
 import OutbidNav, { type NavTabId } from "@/components/board/OutbidNav";
+import VerifyModal from "@/components/board/VerifyModal";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { api } from "@/lib/board/api";
@@ -86,12 +88,16 @@ export default function BoardPage() {
   const [myListings, setMyListings] = useState<ListingDetail[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Verification modal state
+  const [verifyDomain, setVerifyDomain] = useState<string | null>(null);
+
   // Bid modal state
   const [bidOpen, setBidOpen] = useState(false);
   const [targetDomain, setTargetDomain] = useState<string | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [bidAmountCents, setBidAmountCents] = useState(RULES.minBidCents * 5);
   const [customAmountStr, setCustomAmountStr] = useState("");
+  const [alertEmail, setAlertEmail] = useState("");
   const [listingForm, setListingForm] = useState<Fields>({
     url: "",
     name: "",
@@ -173,6 +179,8 @@ export default function BoardPage() {
   } | null>(null);
 
   // Load board data
+  const [reloadCounter, setReloadCounter] = useState(0);
+
   useEffect(() => {
     let unmounted = false;
 
@@ -206,7 +214,7 @@ export default function BoardPage() {
       unmounted = true;
       unsub();
     };
-  }, [season, category]);
+  }, [season, category, reloadCounter]);
 
   // Recalculate quote whenever bid modal inputs change
   useEffect(() => {
@@ -287,6 +295,7 @@ export default function BoardPage() {
     const res = await api.purchaseBid(
       {
         domain: isNew ? undefined : targetDomain ?? undefined,
+        email: alertEmail.trim() || undefined,
         newListing:
           isNew && listingForm.category
             ? {
@@ -589,11 +598,21 @@ export default function BoardPage() {
                               <span className="truncate">{row.listing.name}</span>
                               <ArrowUpRight className="h-3.5 w-3.5 text-muted transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-accent" />
                             </a>
-                            {row.listing.verified && (
-                              <span title="Verified domain owner">
+                            {row.listing.verified ? (
+                              <span title="Verified domain owner" className="inline-flex items-center">
                                 <CheckCircle2 className="h-4 w-4 text-ok" />
                               </span>
-                            )}
+                            ) : myListings.some((m) => m.listing.domain === row.listing.domain) ? (
+                              <button
+                                type="button"
+                                onClick={() => setVerifyDomain(row.listing.domain)}
+                                className="inline-flex items-center gap-1 rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold text-accent hover:bg-accent/20"
+                                title="Click to verify ownership of your domain"
+                              >
+                                <ShieldCheck className="h-3 w-3" />
+                                Verify
+                              </button>
+                            ) : null}
                             <span className="rounded-md bg-raised px-2 py-0.5 text-[11px] font-medium text-muted">
                               {row.listing.category}
                             </span>
@@ -729,9 +748,26 @@ export default function BoardPage() {
                 {myListings.map((m) => (
                   <div
                     key={m.listing.domain}
-                    className="flex items-center justify-between rounded-lg bg-raised/40 p-2 text-xs"
+                    className="flex items-center justify-between rounded-lg bg-raised/40 p-2.5 text-xs"
                   >
-                    <span className="truncate font-medium text-fg">{m.listing.name}</span>
+                    <div className="min-w-0 flex items-center gap-1.5">
+                      <span className="truncate font-medium text-fg">{m.listing.name}</span>
+                      {m.listing.verified ? (
+                        <span title="Verified domain owner">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-ok shrink-0" />
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setVerifyDomain(m.listing.domain)}
+                          className="text-[10px] text-accent hover:underline flex items-center gap-0.5 shrink-0"
+                          title="Verify domain ownership"
+                        >
+                          <ShieldCheck className="h-3 w-3" />
+                          Verify
+                        </button>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() =>
@@ -740,7 +776,7 @@ export default function BoardPage() {
                           rank: m.ranks.all.rank ?? 1,
                         })
                       }
-                      className="text-accent hover:underline"
+                      className="text-accent hover:underline shrink-0 ml-2"
                     >
                       Share Card
                     </button>
@@ -818,6 +854,21 @@ export default function BoardPage() {
                 className="w-32 rounded-lg border border-line bg-raised px-3 py-1.5 text-sm font-medium text-fg focus:border-accent focus:outline-none"
               />
             </div>
+          </div>
+
+          {/* Outbid Alert Email (Optional) */}
+          <div className="rounded-xl border border-line bg-raised/30 p-3.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-fg">Outbid Alert Email (Optional)</label>
+              <span className="text-[11px] text-muted">Get alerted if outbid</span>
+            </div>
+            <input
+              type="email"
+              placeholder="alerts@yourcompany.com"
+              value={alertEmail}
+              onChange={(e) => setAlertEmail(e.target.value)}
+              className="mt-2 w-full rounded-lg border border-line bg-surface px-3 py-2 text-xs font-medium text-fg placeholder:text-muted focus:border-accent focus:outline-none"
+            />
           </div>
 
           {/* Live Quote Preview */}
@@ -921,6 +972,26 @@ export default function BoardPage() {
                 </div>
               </div>
 
+              <div className="mt-6 rounded-2xl border border-line bg-surface p-4 text-left">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-accent" />
+                    <h4 className="text-sm font-bold text-fg">Verify Domain Ownership</h4>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setVerifyDomain(successItem.listing.domain)}
+                    className="text-xs font-bold"
+                  >
+                    Verify Domain
+                  </Button>
+                </div>
+                <p className="mt-1 text-xs text-muted">
+                  Earn the verified green checkmark badge next to your brand on the live leaderboard.
+                </p>
+              </div>
+
               <div className="mt-6">
                 <h4 className="text-sm font-bold text-fg">Get outbid alerts</h4>
                 <div className="mt-3">
@@ -964,6 +1035,17 @@ export default function BoardPage() {
           </div>
         )}
       </Modal>
+
+      {/* Domain Verification Modal */}
+      <VerifyModal
+        open={verifyDomain !== null}
+        domain={verifyDomain || ""}
+        onClose={() => setVerifyDomain(null)}
+        onVerified={() => {
+          setVerifyDomain(null);
+          setReloadCounter((c) => c + 1);
+        }}
+      />
     </div>
   );
 }

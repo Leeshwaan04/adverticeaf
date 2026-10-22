@@ -22,8 +22,21 @@ export const metadata: Metadata = {
     siteName: SITE.name,
     type: "website",
     locale: "en_US",
+    images: [
+      {
+        url: "/v1/og",
+        width: 1200,
+        height: 630,
+        alt: "AdverticeAF Live Attention Leaderboard",
+      },
+    ],
   },
-  twitter: { card: "summary_large_image", title: TITLE, description: SITE.description },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: SITE.description,
+    images: ["/v1/og"],
+  },
 };
 
 export const viewport: Viewport = {

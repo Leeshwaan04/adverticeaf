@@ -117,18 +117,46 @@ export const api: BoardApi = {
   },
 
   async getVerification(domain) {
+    if (BOARD_MODE === "live") {
+      try {
+        return await httpAdapter.getVerification(domain);
+      } catch {
+        // Fall back
+      }
+    }
     return demoAdapter.getVerification(domain);
   },
 
   async checkVerification(domain) {
+    if (BOARD_MODE === "live") {
+      try {
+        return await httpAdapter.checkVerification(domain);
+      } catch {
+        // Fall back
+      }
+    }
     return demoAdapter.checkVerification(domain);
   },
 
   async reportListing(domain, reason) {
+    if (BOARD_MODE === "live") {
+      try {
+        return await httpAdapter.reportListing(domain, reason);
+      } catch {
+        // Fall back
+      }
+    }
     return demoAdapter.reportListing(domain, reason);
   },
 
   async subscribeAlerts(domain, email) {
+    if (BOARD_MODE === "live") {
+      try {
+        return await httpAdapter.subscribeAlerts(domain, email);
+      } catch {
+        // Fall back
+      }
+    }
     return demoAdapter.subscribeAlerts(domain, email);
   },
 
