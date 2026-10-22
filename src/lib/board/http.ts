@@ -245,12 +245,12 @@ async function call(
   path: string,
   opts: { method?: "GET" | "POST"; body?: unknown; headers?: Record<string, string>; timeoutMs?: number } = {},
 ): Promise<unknown> {
-  if (!BOARD_API_BASE) throw new ApiError("The Board is not connected to a server yet.", 0);
+  const base = BOARD_API_BASE || (typeof window !== "undefined" ? "" : "https://adverticeaf.com");
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 15_000);
   let res: Response;
   try {
-    res = await fetch(`${BOARD_API_BASE}${path}`, {
+    res = await fetch(`${base}${path}`, {
       method: opts.method ?? "GET",
       credentials: "omit",
       headers: { Accept: "application/json", ...(opts.body !== undefined ? { "Content-Type": "application/json" } : {}), ...opts.headers },

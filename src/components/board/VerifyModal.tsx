@@ -234,3 +234,4 @@ export default function VerifyModal({ open, onClose, domain, onVerified }: Verif
     </Modal>
   );
 }
+

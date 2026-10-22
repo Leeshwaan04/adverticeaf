@@ -60,17 +60,20 @@ export const api: BoardApi = {
   },
 
   async purchaseBid(req, idempotencyKey) {
-    let result = null;
     if (BOARD_MODE === "live") {
-      try {
-        result = await httpAdapter.purchaseBid(req, idempotencyKey);
-      } catch {
-        // Fall through to demoAdapter
+      const result = await httpAdapter.purchaseBid(req, idempotencyKey);
+      if (result.ok) {
+        if (result.listing) {
+          remember(result.listing.domain);
+        } else {
+          const key = req.domain ?? (req.newListing ? checkListingUrl(req.newListing.url) : null);
+          if (typeof key === "string") remember(key);
+          else if (key && key.ok) remember(key.key);
+        }
       }
+      return result;
     }
-    if (!result || !result.ok) {
-      result = await demoAdapter.purchaseBid(req, idempotencyKey);
-    }
+    const result = await demoAdapter.purchaseBid(req, idempotencyKey);
     if (result.ok) {
       if (result.listing) {
         remember(result.listing.domain);
@@ -161,6 +164,9 @@ export const api: BoardApi = {
   },
 
   subscribe(cb) {
+    if (BOARD_MODE === "live") {
+      return httpAdapter.subscribe(cb);
+    }
     return demoAdapter.subscribe(cb);
   },
 

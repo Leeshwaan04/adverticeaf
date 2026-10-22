@@ -311,7 +311,7 @@ export default function BoardPage() {
       idempotencyKey
     );
 
-    if (res.ok && res.listing) {
+    if (res.ok && res.listing && !res.checkoutUrl) {
       const snap = await api.getBoard(season, category);
       setSnapshot(snap);
       const row = snap.rows.find((r) => r.listing.domain === res.listing!.domain);

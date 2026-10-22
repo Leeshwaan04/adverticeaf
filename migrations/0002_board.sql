@@ -38,3 +38,4 @@ CREATE TABLE IF NOT EXISTS board_verifications (
   verified INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 );
+
