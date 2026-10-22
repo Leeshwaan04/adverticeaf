@@ -1,4 +1,49 @@
-import { CAMPAIGN_CATEGORIES, CAMPAIGN_FORMATS, type Campaign } from "../../data/campaigns.ts";
+export const CAMPAIGN_CATEGORIES = [
+  "Consumer Brands & FMCG",
+  "Tech & AI",
+  "Fintech & Crypto",
+  "App & SaaS",
+  "Food & Beverage",
+  "Fashion & Apparel",
+  "Entertainment & Gaming",
+  "Health & Wellness",
+  "Services & B2B",
+] as const;
+
+export const CAMPAIGN_FORMATS = [
+  "Reel / TikTok",
+  "TVC / Film",
+  "Stunt / Guerrilla",
+  "Static / OOH",
+  "Social Campaign",
+] as const;
+
+export interface Campaign {
+  id: string;
+  slug: string;
+  title: string;
+  brand: string;
+  tagline: string;
+  agency: { name: string; verified: boolean };
+  description: string;
+  hookBreakdown: {
+    theHook: string;
+    theAngle: string;
+    theResult: string;
+  };
+  mediaType: "image" | "video";
+  mediaUrl: string;
+  websiteUrl: string;
+  thumbnailUrl: string;
+  format: string;
+  category: string;
+  metrics: Record<string, unknown>;
+  initialUpvotes: number;
+  launchedAt: string;
+  creativeAngle: string;
+  promoted?: boolean;
+  badge?: string;
+}
 
 export const PROMOTION_PLANS = {
   "24h": { cents: 2900, durationMs: 24 * 60 * 60 * 1000, label: "24h Spotlight" },

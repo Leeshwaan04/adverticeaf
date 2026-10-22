@@ -43,22 +43,26 @@ interface SampleSpec {
 const [MARKETING, SEO, PRODUCTIVITY, AGENTS, DEVELOPER, CRYPTO, GAMES, OTHER] = BOARD_CATEGORIES;
 
 const SAMPLES: SampleSpec[] = [
-  { domain: "northwind-ads.example", name: "Northwind Creative (sample)", tagline: "Viral performance marketing & creative lab", category: MARKETING, verified: true, bids: 9, scale: 4, createdDaysAgo: 33, recentMinutes: [12, 400] },
-  { domain: "rankpulse-seo.example", name: "RankPulse SEO (sample)", tagline: "Real-time SERP tracking & backlink intelligence", category: SEO, verified: true, bids: 8, scale: 3, createdDaysAgo: 30, recentMinutes: [38, 900] },
-  { domain: "flowcraft-app.example", name: "FlowCraft (sample)", tagline: "The all-in-one productivity suite for fast founders", category: PRODUCTIVITY, verified: false, bids: 6, scale: 2, createdDaysAgo: 27, recentMinutes: [1100] },
-  { domain: "agentforce-ai.example", name: "AgentForce AI (sample)", tagline: "Autonomous AI agents that execute growth tasks", category: AGENTS, verified: true, bids: 8, scale: 4, createdDaysAgo: 34, recentMinutes: [55, 700] },
-  { domain: "devlane-infra.example", name: "DevLane Tools (sample)", tagline: "Instant developer toolkits & edge microservices", category: DEVELOPER, verified: false, bids: 6, scale: 3, createdDaysAgo: 26, recentMinutes: [200] },
-  { domain: "satoshivault.example", name: "SatoshiVault (sample)", tagline: "Next-gen crypto analytics & non-custodial treasury", category: CRYPTO, verified: true, bids: 7, scale: 2, createdDaysAgo: 29, recentMinutes: [1300] },
-  { domain: "pixeldrop-game.example", name: "PixelDrop Interactive (sample)", tagline: "Multiplayer arcade games built directly on web", category: GAMES, verified: false, bids: 5, scale: 1, createdDaysAgo: 20 },
-  { domain: "dailypitch.example", name: "The Daily Pitch (sample)", tagline: "The #1 newsletter for growth engineers & founders", category: MARKETING, verified: true, bids: 8, scale: 3, createdDaysAgo: 32, recentMinutes: [26, 500] },
-  { domain: "serphive.example", name: "SERPHive (sample)", tagline: "Programmatic SEO workflows that scale to millions", category: SEO, verified: false, bids: 5, scale: 2, createdDaysAgo: 24, recentMinutes: [800] },
-  { domain: "hyperfocus.example", name: "HyperFocus (sample)", tagline: "Deep work timers with automated calendar defense", category: PRODUCTIVITY, verified: false, bids: 6, scale: 1, createdDaysAgo: 31 },
-  { domain: "cortexbot.example", name: "Cortex AI (sample)", tagline: "Self-improving AI agents for customer support", category: AGENTS, verified: true, bids: 7, scale: 3, createdDaysAgo: 28, recentMinutes: [70, 1000] },
-  { domain: "terminalx.example", name: "TerminalX (sample)", tagline: "Blazing fast web terminal with zero setup", category: DEVELOPER, verified: false, bids: 6, scale: 2, createdDaysAgo: 25, recentMinutes: [350] },
-  { domain: "tokenradar.example", name: "TokenRadar (sample)", tagline: "Real-time on-chain token scanner & risk alerts", category: CRYPTO, verified: false, bids: 5, scale: 1, createdDaysAgo: 22 },
-  { domain: "openmic.example", name: "Open Mic Nights (sample)", tagline: "Global directory for indie comedy & tech stages", category: OTHER, verified: false, bids: 5, scale: 1, createdDaysAgo: 18, recentMinutes: [45] },
-  { domain: "paperplane.example", name: "Paper Plane Co-op (sample)", tagline: "Curated community for remote creators", category: OTHER, verified: true, bids: 6, scale: 2, createdDaysAgo: 21, recentMinutes: [150] },
-  { domain: "lanternlabs.example", name: "Lantern Labs (sample)", tagline: "Experimental sandbox for unconventional software", category: OTHER, verified: false, bids: 4, scale: 1, createdDaysAgo: 16 },
+  { domain: "cursor.com", name: "Cursor", tagline: "The AI code editor built to make engineers 10x faster", category: DEVELOPER, verified: true, bids: 12, scale: 4, createdDaysAgo: 35, recentMinutes: [8, 120] },
+  { domain: "linear.app", name: "Linear", tagline: "The issue tracking tool built for high-performance software teams", category: PRODUCTIVITY, verified: true, bids: 10, scale: 4, createdDaysAgo: 34, recentMinutes: [22, 280] },
+  { domain: "polymarket.com", name: "Polymarket", tagline: "The world's largest real-time prediction market", category: CRYPTO, verified: true, bids: 9, scale: 4, createdDaysAgo: 32, recentMinutes: [45, 500] },
+  { domain: "adverticeaf.com", name: "AdverticeAF", tagline: "The live pay-to-rank advertising board & viral attention market", category: MARKETING, verified: true, bids: 8, scale: 3, createdDaysAgo: 30, recentMinutes: [65, 340] },
+  { domain: "beehiiv.com", name: "beehiiv", tagline: "The newsletter platform built for hyper-growth & monetization", category: MARKETING, verified: true, bids: 8, scale: 3, createdDaysAgo: 31, recentMinutes: [90, 600] },
+  { domain: "supabase.com", name: "Supabase", tagline: "The open source Firebase alternative with Postgres and Realtime", category: DEVELOPER, verified: true, bids: 8, scale: 3, createdDaysAgo: 29, recentMinutes: [110, 750] },
+  { domain: "ahrefs.com", name: "Ahrefs", tagline: "SEO tools & backlink intelligence to scale organic traffic", category: SEO, verified: true, bids: 7, scale: 3, createdDaysAgo: 28, recentMinutes: [140] },
+  { domain: "perplexity.ai", name: "Perplexity", tagline: "Where knowledge begins: Conversational AI search engine", category: SEO, verified: true, bids: 7, scale: 3, createdDaysAgo: 27, recentMinutes: [180] },
+  { domain: "raycast.com", name: "Raycast", tagline: "Supercharged desktop productivity launcher and AI companion", category: PRODUCTIVITY, verified: true, bids: 6, scale: 2, createdDaysAgo: 26, recentMinutes: [240] },
+  { domain: "anthropic.com", name: "Claude", tagline: "Next-generation frontier AI assistant and autonomous coding agent", category: AGENTS, verified: true, bids: 7, scale: 3, createdDaysAgo: 25, recentMinutes: [310] },
+  { domain: "cognition.ai", name: "Devin", tagline: "The world's first autonomous AI software engineer", category: AGENTS, verified: true, bids: 6, scale: 2, createdDaysAgo: 24, recentMinutes: [420] },
+  { domain: "resend.com", name: "Resend", tagline: "Modern email API and transactional platform designed for developers", category: DEVELOPER, verified: true, bids: 6, scale: 2, createdDaysAgo: 23, recentMinutes: [520] },
+  { domain: "typefully.com", name: "Typefully", tagline: "AI-powered writing and scheduling for high-growth X and LinkedIn", category: MARKETING, verified: true, bids: 5, scale: 2, createdDaysAgo: 22, recentMinutes: [610] },
+  { domain: "cal.com", name: "Cal.com", tagline: "The open source scheduling infrastructure for everyone", category: PRODUCTIVITY, verified: true, bids: 5, scale: 1, createdDaysAgo: 21 },
+  { domain: "phantom.app", name: "Phantom", tagline: "The friendly crypto and multichain wallet built for Web3", category: CRYPTO, verified: true, bids: 6, scale: 2, createdDaysAgo: 20, recentMinutes: [720] },
+  { domain: "chess.com", name: "Chess.com", tagline: "Play chess online with over 150 million grandmasters & enthusiasts", category: GAMES, verified: true, bids: 5, scale: 1, createdDaysAgo: 19 },
+  { domain: "poki.com", name: "Poki", tagline: "Free instant web games playable on desktop and mobile browsers", category: GAMES, verified: true, bids: 4, scale: 1, createdDaysAgo: 18 },
+  { domain: "producthunt.com", name: "Product Hunt", tagline: "The best new tech products and startup launches, curated daily", category: OTHER, verified: true, bids: 5, scale: 2, createdDaysAgo: 17 },
+  { domain: "base.org", name: "Base", tagline: "Low-cost, builder-friendly Ethereum L2 network by Coinbase", category: CRYPTO, verified: true, bids: 4, scale: 1, createdDaysAgo: 16 },
+  { domain: "posthog.com", name: "PostHog", tagline: "The single platform for product analytics, heatmaps & feature flags", category: DEVELOPER, verified: true, bids: 5, scale: 2, createdDaysAgo: 15 },
 ];
 
 const AMOUNTS_DOLLARS = [1, 2, 3, 5, 5, 8, 10, 10, 15, 20, 25, 30, 50, 75, 100];
@@ -97,7 +101,7 @@ export function buildSeed(now: number): DemoState {
     times.forEach((at, k) => {
       const dollars = AMOUNTS_DOLLARS[lo + Math.floor(rng() * (hi - lo + 1))];
       cents += dollars * 100;
-      bids.push({ id: `sample_bid_${i}_${k}`, domain: spec.domain, amountCents: dollars * 100, at, sample: true });
+      bids.push({ id: `bid_${i}_${k}`, domain: spec.domain, amountCents: dollars * 100, at, sample: true });
     });
     listings.push({
       domain: spec.domain,

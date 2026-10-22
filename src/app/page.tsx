@@ -47,6 +47,35 @@ import type {
 
 const QUICK_AMOUNTS = [500, 1000, 2500, 5000, 10000];
 
+function getSeasonResetLabel(season: SeasonId, now: number): string | null {
+  if (season === "all") return null;
+  const d = new Date(now);
+  if (season === "daily") {
+    const next = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1);
+    const diff = Math.max(0, next - now);
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    return `Resets in ${h}h ${m}m`;
+  }
+  if (season === "weekly") {
+    const day = d.getUTCDay();
+    const daysUntilMon = ((8 - (day === 0 ? 7 : day)) % 7) || 7;
+    const next = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + daysUntilMon);
+    const diff = Math.max(0, next - now);
+    const days = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    return days > 0 ? `Resets in ${days}d ${h}h` : `Resets in ${h}h`;
+  }
+  if (season === "monthly") {
+    const next = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
+    const diff = Math.max(0, next - now);
+    const days = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    return `Resets in ${days}d ${h}h`;
+  }
+  return null;
+}
+
 export default function BoardPage() {
   const [season, setSeason] = useState<SeasonId>("all");
   const [category, setCategory] = useState<BoardCategory | null>(null);
@@ -194,7 +223,23 @@ export default function BoardPage() {
   }
 
   function handleFormChange(field: keyof Fields, val: string) {
-    setListingForm((prev) => ({ ...prev, [field]: val }));
+    setListingForm((prev) => {
+      const next = { ...prev, [field]: val };
+      if (field === "url" && !prev.name.trim() && val.trim()) {
+        try {
+          const str = val.startsWith("http") ? val : `https://${val}`;
+          const u = new URL(str);
+          const host = u.hostname.replace(/^www\./, "");
+          const base = host.split(".")[0];
+          if (base) {
+            next.name = base.charAt(0).toUpperCase() + base.slice(1);
+          }
+        } catch {
+          // ignore until valid
+        }
+      }
+      return next;
+    });
     if (formErrors[field]) {
       setFormErrors((prev) => ({ ...prev, [field]: undefined }));
     }
@@ -335,25 +380,34 @@ export default function BoardPage() {
 
       {/* Season Tabs & Active Category Indicator */}
       <div className="mt-8 flex flex-col gap-4 border-b border-line pb-4 sm:flex-row sm:items-center sm:justify-between">
-        {/* Season selector */}
-        <div className="flex items-center gap-1 rounded-xl bg-surface p-1 border border-line/60">
-          {SEASONS.map((s) => {
-            const active = season === s.id;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setSeason(s.id)}
-                className={`rounded-lg px-3.5 py-1.5 text-xs sm:text-sm font-medium transition-all ${
-                  active
-                    ? "bg-[#e2573f] text-white shadow-sm font-semibold"
-                    : "text-muted hover:text-fg"
-                }`}
-              >
-                {s.label}
-              </button>
-            );
-          })}
+        {/* Season selector with countdown */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 rounded-xl bg-surface p-1 border border-line/60">
+            {SEASONS.map((s) => {
+              const active = season === s.id;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setSeason(s.id)}
+                  className={`rounded-lg px-3.5 py-1.5 text-xs sm:text-sm font-medium transition-all ${
+                    active
+                      ? "bg-[#e2573f] text-white shadow-sm font-semibold"
+                      : "text-muted hover:text-fg"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {getSeasonResetLabel(season, now) && (
+            <span className="inline-flex items-center gap-1 rounded-lg border border-line/50 bg-surface/60 px-2.5 py-1 text-xs font-medium text-muted">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+              {getSeasonResetLabel(season, now)}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2 text-xs text-muted">
@@ -377,6 +431,77 @@ export default function BoardPage() {
       <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-12">
         {/* Leaderboard Table (8 cols on lg) */}
         <div className="lg:col-span-8">
+          {/* King of the Hill #1 Spotlight Card */}
+          {snapshot && snapshot.rows.length > 0 && !category && (
+            <div className="relative mb-6 overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-[#1a1714] to-[#12100e] p-5 sm:p-6 shadow-xl shadow-amber-500/5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="relative shrink-0">
+                    <Avatar
+                      name={snapshot.rows[0].listing.name}
+                      domain={snapshot.rows[0].listing.domain}
+                      size={54}
+                      className="ring-2 ring-amber-400/40"
+                    />
+                    <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-amber-400 text-black shadow-md">
+                      <Crown className="h-3.5 w-3.5 fill-current" />
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-amber-300">
+                        King of the Hill #1
+                      </span>
+                      <span className="rounded-md bg-white/5 px-2 py-0.5 text-[11px] font-medium text-muted">
+                        {snapshot.rows[0].listing.category}
+                      </span>
+                    </div>
+                    <a
+                      href={snapshot.rows[0].listing.url}
+                      target="_blank"
+                      rel="sponsored nofollow"
+                      onClick={() => api.recordClick(snapshot.rows[0].listing.domain)}
+                      className="group mt-1 flex items-center gap-1.5 text-lg font-black text-fg hover:text-amber-300"
+                    >
+                      <span className="truncate">{snapshot.rows[0].listing.name}</span>
+                      <ArrowUpRight className="h-4 w-4 text-muted group-hover:text-amber-300 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                    </a>
+                    <p className="text-xs text-muted truncate max-w-md">
+                      {snapshot.rows[0].listing.tagline}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between sm:justify-end gap-5 border-t border-white/5 pt-3 sm:border-0 sm:pt-0">
+                  <div className="text-left sm:text-right">
+                    <div className="text-[11px] font-semibold text-muted uppercase tracking-wider">Total Spent</div>
+                    <div className="text-xl font-black text-amber-300 font-display">
+                      {formatUsd(snapshot.rows[0].totalCents)}
+                    </div>
+                    <div className="text-[11px] text-muted">
+                      {snapshot.rows[0].clicks} clicks
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      setIsNew(false);
+                      setTargetDomain(snapshot.rows[0].listing.domain);
+                      setBidAmountCents(Math.max(snapshot.leadCostCents, 1000));
+                      setCustomAmountStr("");
+                      setBidOpen(true);
+                    }}
+                    className="bg-amber-400 hover:bg-amber-300 text-black font-extrabold shadow-lg shadow-amber-400/20 border-none whitespace-nowrap text-xs"
+                  >
+                    <Crown className="h-3.5 w-3.5 mr-1" />
+                    Outbid for {formatUsd(snapshot.leadCostCents)}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-line bg-surface/30">
               <p className="text-sm text-muted">Loading live leaderboard...</p>
@@ -428,7 +553,7 @@ export default function BoardPage() {
                         </div>
 
                         {/* Avatar */}
-                        <Avatar name={row.listing.name} size={42} />
+                        <Avatar name={row.listing.name} domain={row.listing.domain} size={42} />
 
                         {/* Info */}
                         <div className="min-w-0 flex-1">
@@ -451,11 +576,6 @@ export default function BoardPage() {
                             <span className="rounded-md bg-raised px-2 py-0.5 text-[11px] font-medium text-muted">
                               {row.listing.category}
                             </span>
-                            {row.listing.sample && (
-                              <span className="rounded-md border border-line px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-muted">
-                                Sample
-                              </span>
-                            )}
                           </div>
                           <p className="mt-0.5 truncate text-sm text-muted">
                             {row.listing.tagline}

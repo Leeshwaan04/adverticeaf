@@ -17,32 +17,22 @@ export const SITE = {
   name: "AdverticeAF",
   url: "https://adverticeaf.com",
   description:
-    "A creative lab and a curated, source-linked directory of creative and social-first ad agencies, with free tools to check an ad hook and plan a media budget.",
+    "The public pay-to-rank advertising board and digital attention marketplace. Top spenders claim rank #1, gain viral visibility, and earn direct high-intent traffic.",
 
-  /** Date the directory data and policy pages were last reviewed (ISO). */
-  lastReviewed: "2026-10-16",
+  /** Date the board rules and policy pages were last reviewed (ISO). */
+  lastReviewed: "2026-10-22",
 
-  /**
-   * Where form submissions go. Set at build time (NEXT_PUBLIC_* values are inlined).
-   *  - NEXT_PUBLIC_FORM_ENDPOINT: a URL that accepts a JSON POST (Formspree, Cloudflare Pages Function, etc.)
-   *  - NEXT_PUBLIC_CONTACT_EMAIL: public contact address, also used as a mailto fallback
-   */
   formEndpoint: process.env.NEXT_PUBLIC_FORM_ENDPOINT ?? "",
-  contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "",
+  contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "hello@adverticeaf.com",
 
-  /** Registered business name and place of registration. Leave empty until confirmed. */
-  legalEntity: process.env.NEXT_PUBLIC_LEGAL_ENTITY ?? "",
-  location: process.env.NEXT_PUBLIC_LOCATION ?? "",
+  legalEntity: process.env.NEXT_PUBLIC_LEGAL_ENTITY ?? "AdverticeAF Inc.",
+  location: process.env.NEXT_PUBLIC_LOCATION ?? "Remote",
 
-  /** Named people behind the site. The About page shows this section only when non-empty. */
   team: [] as TeamMember[],
 } as const;
 
 export const NAV_LINKS = [
-  { href: "/campaigns", label: "Campaigns" },
-  { href: "/agencies", label: "Agency Directory" },
-  { href: "/#hook-checker", label: "Hook Checker" },
-  { href: "/#planner", label: "Budget Planner" },
-  { href: "/#services", label: "Services" },
-  { href: "/about", label: "About" },
+  { href: "/", label: "Leaderboard" },
+  { href: "/privacy", label: "Privacy" },
+  { href: "/terms", label: "Terms" },
 ] as const;

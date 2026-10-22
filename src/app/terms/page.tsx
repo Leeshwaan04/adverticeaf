@@ -1,76 +1,95 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import PageShell, { Prose } from "@/components/PageShell";
 import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Terms of use",
-  description: "The terms for using the AdverticeAF website, tools and agency directory.",
+  title: "Terms of Use",
+  description: "The ground rules and auction terms for AdverticeAF pay-to-rank leaderboard.",
   alternates: { canonical: "/terms" },
 };
 
 export default function TermsPage() {
   const operator = SITE.legalEntity || SITE.name;
+
   return (
-    <PageShell eyebrow="Legal" title="Terms of use" intro="The ground rules for using this site." reviewed>
-      <Prose>
-        <h2>Using the site</h2>
-        <p>
-          By using this site you agree to these terms. The site is operated by {operator}. Please do not misuse it, attempt
-          to disrupt it, or scrape it in a way that harms its operation.
+    <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="border-b border-line pb-8">
+        <span className="text-xs font-bold uppercase tracking-wider text-[#e2573f]">Legal</span>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-fg sm:text-4xl font-display">
+          Terms of Use
+        </h1>
+        <p className="mt-2 text-base text-muted">
+          The ground rules for participating in the AdverticeAF live pay-to-rank advertising market.
         </p>
+      </div>
 
-        <h2>Information is general, not advice</h2>
-        <p>
-          The directory, Hook Checker and Budget Planner are provided for general information. They are not business, legal,
-          financial or advertising advice, and their outputs are not predictions of results. You are responsible for your own
-          decisions.
-        </p>
+      <div className="prose prose-invert mt-8 max-w-none space-y-8 text-sm leading-relaxed text-muted">
+        <section>
+          <h2 className="text-lg font-bold text-fg">1. Nature of the Service</h2>
+          <p className="mt-2">
+            AdverticeAF (operated by {operator}) operates a transparent, real-time public leaderboard where
+            websites and products compete for rank and placement based on cumulative spend. By placing a bid
+            or adding a URL to the board, you agree to these terms.
+          </p>
+        </section>
 
-        <h2>Directory information</h2>
-        <p>
-          Profiles are compiled from public third-party sources, which can be wrong or out of date, and we cannot guarantee
-          their accuracy. Listing an agency is not an endorsement, and absence is not a judgement. Always confirm details
-          with an agency directly. See <Link href="/methodology">how the directory works</Link> and tell us about errors
-          through the suggestion form.
-        </p>
+        <section>
+          <h2 className="text-lg font-bold text-fg">2. Bidding and Leaderboard Rankings</h2>
+          <p className="mt-2">
+            Placement on the board is determined strictly by total approved bid volume within the selected timeframe
+            (Daily, Weekly, Monthly, or All-Time). Ties are resolved chronologically, favoring the earlier bidder.
+            All bids must meet the minimum bid amount ($1.00 USD) and move in whole dollar increments.
+          </p>
+        </section>
 
-        <h2>Third-party names and links</h2>
-        <p>
-          Agency, brand and publication names belong to their owners and are used only to identify them. They do not imply
-          any affiliation with us. We are not responsible for the content of external sites we link to.
-        </p>
+        <section>
+          <h2 className="text-lg font-bold text-fg">3. Link Guidelines and Acceptance</h2>
+          <p className="mt-2">
+            All submitted URLs must point to legitimate, active websites. We strictly prohibit URLs that link to:
+          </p>
+          <ul className="mt-2 list-disc pl-5 space-y-1">
+            <li>Malware, phishing, or deceptive software</li>
+            <li>Illegal goods, unauthorized financial scams, or illicit services</li>
+            <li>Hate speech, harassment, or defamatory content</li>
+            <li>URL shorteners or redirect hops designed to obscure destination identity</li>
+          </ul>
+          <p className="mt-2">
+            We reserve the right to review, reject, or remove any listing violating these guidelines without prior notice.
+          </p>
+        </section>
 
-        <h2>Content you send us</h2>
-        <p>
-          When you send us information, you confirm you have the right to share it and that it is accurate to the best of your
-          knowledge. For listing suggestions, you confirm that you are authorised to act for the agency or that your
-          information comes from the public sources you provide.
-        </p>
+        <section>
+          <h2 className="text-lg font-bold text-fg">4. Payments and Non-Refundability</h2>
+          <p className="mt-2">
+            Because placement positions and attention impressions take effect immediately upon payment confirmation,
+            all completed bids and purchases are final and non-refundable, except where required by applicable consumer law
+            or in proven cases of unauthorized fraudulent billing.
+          </p>
+        </section>
 
-        <h2>Our services</h2>
-        <p>
-          Prices shown on the site are starting prices, not a quote. Any paid work is covered by a separate written agreement
-          that sets out scope, timing and price. We do not promise specific advertising results.
-        </p>
+        <section>
+          <h2 className="text-lg font-bold text-fg">5. Third-Party Trademarks</h2>
+          <p className="mt-2">
+            All third-party brand names, logos, and trademarks appearing on the board belong to their respective owners
+            and are displayed solely to identify participating websites and destinations. Their presence does not imply
+            sponsorship, endorsement, or formal affiliation.
+          </p>
+        </section>
 
-        <h2>No warranty and limits on liability</h2>
-        <p>
-          The site and tools are provided as they are, without warranties of any kind. To the extent the law allows, we are
-          not liable for losses that arise from using the site or relying on its information.
-        </p>
+        <section>
+          <h2 className="text-lg font-bold text-fg">6. Limitation of Liability</h2>
+          <p className="mt-2">
+            AdverticeAF is provided on an &quot;as is&quot; and &quot;as available&quot; basis. We do not guarantee specific
+            traffic volume, conversion rates, click-through rates, or financial returns resulting from leaderboard placement.
+          </p>
+        </section>
 
-        <h2>Changes</h2>
-        <p>
-          We may update these terms. The review date above shows when they last changed, and continued use means you accept the
-          current version.
-        </p>
-
-        <h2>Contact</h2>
-        <p>
-          Questions about these terms? Use the <Link href="/contact">contact page</Link>.
-        </p>
-      </Prose>
-    </PageShell>
+        <div className="border-t border-line pt-6">
+          <Link href="/" className="text-sm font-semibold text-[#e2573f] hover:underline">
+            &larr; Return to Leaderboard
+          </Link>
+        </div>
+      </div>
+    </div>
   );
 }

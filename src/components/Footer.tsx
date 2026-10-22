@@ -6,16 +6,8 @@ const COLUMNS = [
   {
     title: "Leaderboard",
     links: [
-      { href: "/", label: "All-Time Rankings" },
+      { href: "/", label: "Live Rankings" },
       { href: "/board/rules", label: "Bidding Rules & FAQ" },
-      { href: "/campaigns", label: "Featured Spotlights" },
-    ],
-  },
-  {
-    title: "Company",
-    links: [
-      { href: "/about", label: "About AdverticeAF" },
-      { href: "/contact", label: "Support & Inquiries" },
     ],
   },
   {
@@ -31,7 +23,7 @@ export default function Footer() {
   return (
     <footer className="border-t border-line bg-surface/40">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+        <div className="grid gap-10 md:grid-cols-[1.6fr_repeat(2,1fr)]">
           <div>
             <Logo />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">

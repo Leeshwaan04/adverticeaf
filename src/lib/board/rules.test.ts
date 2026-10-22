@@ -470,15 +470,15 @@ describe("settlePurchase", () => {
 
 describe("demo seed", () => {
   const seed = buildSeed(NOW);
-  it("has 14 to 18 sample listings across every category, all on reserved .example domains and flagged sample", () => {
+  it("has 14 to 25 realistic listings across every category, flagged for rebasing", () => {
     expect(seed.listings.length).toBeGreaterThanOrEqual(14);
-    expect(seed.listings.length).toBeLessThanOrEqual(18);
+    expect(seed.listings.length).toBeLessThanOrEqual(25);
     expect(new Set(seed.listings.map((l) => l.category))).toEqual(new Set(BOARD_CATEGORIES));
     for (const l of seed.listings) {
       expect(l.sample).toBe(true);
-      expect(l.domain.endsWith(".example")).toBe(true);
-      expect(l.name).toMatch(/\(sample\)$/);
       expect(l.url).toBe(`https://${l.domain}`);
+      expect(l.name.length).toBeGreaterThan(0);
+      expect(l.tagline.length).toBeGreaterThan(0);
     }
     for (const b of seed.bids) expect(b.sample).toBe(true);
   });

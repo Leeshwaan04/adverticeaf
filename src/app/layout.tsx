@@ -3,13 +3,12 @@ import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import ModalProvider from "@/components/ModalProvider";
 import { SITE } from "@/lib/site";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 const grotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-grotesk", display: "swap" });
 
-const TITLE = "AdverticeAF | Creative lab and agency directory";
+const TITLE = "AdverticeAF — The Pay-to-Rank Live Attention Leaderboard";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
@@ -24,11 +23,11 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
   },
-  twitter: { card: "summary", title: TITLE, description: SITE.description },
+  twitter: { card: "summary_large_image", title: TITLE, description: SITE.description },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#030712",
+  themeColor: "#0d0c0a",
   colorScheme: "dark",
 };
 
@@ -45,7 +44,7 @@ const organization = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${grotesk.variable}`}>
-      <body className="min-h-screen bg-ink font-sans text-fg antialiased">
+      <body className="min-h-screen bg-ink font-sans text-fg antialiased selection:bg-[#e2573f]/30 selection:text-white">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organization).replace(/</g, "\\u003c") }}
@@ -53,13 +52,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <a href="#main" className="skip-link">
           Skip to main content
         </a>
-        <ModalProvider>
-          <Navbar />
-          <main id="main" className="pt-16">
-            {children}
-          </main>
-          <Footer />
-        </ModalProvider>
+        <Navbar />
+        <main id="main" className="pt-16">
+          {children}
+        </main>
+        <Footer />
       </body>
     </html>
   );

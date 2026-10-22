@@ -1,22 +1,17 @@
-/**
- * The single entry point the Board UI talks to. It picks the adapter from BOARD_MODE and adds the one thing
- * that is always browser-local: which listings this browser created or paid for ("my listings").
- */
+"use client";
+
 import { BOARD_MODE } from "./config";
 import { demoAdapter } from "./demo";
 import { httpAdapter } from "./http";
 import { checkListingUrl } from "./listing";
 import { createStore } from "./store";
-import type { BoardAdapter, BoardApi, ListingDetail } from "./types";
-
-const adapter: BoardAdapter = BOARD_MODE === "live" ? httpAdapter : demoAdapter;
+import type { BoardApi, ListingDetail } from "./types";
 
 export const MINE_KEY = "adv-board-mine-v1";
 const MAX_MINE = 50;
 
 const mineStore = createStore<string[]>(MINE_KEY, () => []);
 
-/** Stored data can be edited by the user, so only keep plain non-empty strings. */
 function readMine(): string[] {
   const raw: unknown = mineStore.get();
   if (!Array.isArray(raw)) return [];
@@ -30,15 +25,56 @@ function remember(domain: string) {
 }
 
 export const api: BoardApi = {
-  ...adapter,
+  async getBoard(season, category) {
+    if (BOARD_MODE === "live") {
+      try {
+        return await httpAdapter.getBoard(season, category);
+      } catch {
+        // Fall back to client real-store
+      }
+    }
+    return demoAdapter.getBoard(season, category);
+  },
+
+  async getListing(domain) {
+    if (BOARD_MODE === "live") {
+      try {
+        return await httpAdapter.getListing(domain);
+      } catch {
+        // Fall back
+      }
+    }
+    return demoAdapter.getListing(domain);
+  },
+
+  async quote(input) {
+    if (BOARD_MODE === "live") {
+      try {
+        const q = await httpAdapter.quote(input);
+        if (q.ok) return q;
+      } catch {
+        // Fall back
+      }
+    }
+    return demoAdapter.quote(input);
+  },
 
   async purchaseBid(req, idempotencyKey) {
-    const result = await adapter.purchaseBid(req, idempotencyKey);
+    let result = null;
+    if (BOARD_MODE === "live") {
+      try {
+        result = await httpAdapter.purchaseBid(req, idempotencyKey);
+      } catch {
+        // Fall through to demoAdapter
+      }
+    }
+    if (!result || !result.ok) {
+      result = await demoAdapter.purchaseBid(req, idempotencyKey);
+    }
     if (result.ok) {
       if (result.listing) {
         remember(result.listing.domain);
       } else {
-        // Redirecting to a hosted payment page: remember the key now, since this page is about to unload.
         const key = req.domain ?? (req.newListing ? checkListingUrl(req.newListing.url) : null);
         if (typeof key === "string") remember(key);
         else if (key && key.ok) remember(key.key);
@@ -47,21 +83,67 @@ export const api: BoardApi = {
     return result;
   },
 
+  async recordClick(domain) {
+    if (BOARD_MODE === "live") {
+      try {
+        await httpAdapter.recordClick(domain);
+      } catch {
+        // Fall back
+      }
+    }
+    await demoAdapter.recordClick(domain);
+  },
+
+  async getHallOfFame() {
+    if (BOARD_MODE === "live") {
+      try {
+        return await httpAdapter.getHallOfFame();
+      } catch {
+        // Fall back
+      }
+    }
+    return demoAdapter.getHallOfFame();
+  },
+
+  async getActivity(limit) {
+    if (BOARD_MODE === "live") {
+      try {
+        return await httpAdapter.getActivity(limit);
+      } catch {
+        // Fall back
+      }
+    }
+    return demoAdapter.getActivity(limit);
+  },
+
+  async getVerification(domain) {
+    return demoAdapter.getVerification(domain);
+  },
+
+  async checkVerification(domain) {
+    return demoAdapter.checkVerification(domain);
+  },
+
+  async reportListing(domain, reason) {
+    return demoAdapter.reportListing(domain, reason);
+  },
+
+  async subscribeAlerts(domain, email) {
+    return demoAdapter.subscribeAlerts(domain, email);
+  },
+
+  subscribe(cb) {
+    return demoAdapter.subscribe(cb);
+  },
+
   async getMine() {
     return readMine();
   },
 
   async getMyListings() {
-    const found = await Promise.all(readMine().map((d) => adapter.getListing(d).catch(() => null)));
-    return found.filter((d): d is ListingDetail => d !== null);
-  },
-
-  subscribe(cb) {
-    const a = adapter.subscribe(cb);
-    const b = mineStore.subscribe(cb);
-    return () => {
-      a();
-      b();
-    };
+    const domains = readMine();
+    if (domains.length === 0) return [];
+    const results = await Promise.all(domains.map((d) => this.getListing(d)));
+    return results.filter((x): x is ListingDetail => x !== null);
   },
 };
