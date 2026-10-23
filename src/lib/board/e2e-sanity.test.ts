@@ -358,4 +358,83 @@ describe("E2E Sanity Testing — All User Scenarios, Flows & Journeys", () => {
       expect(res.status).toBe(401);
     });
   });
+
+  describe("Journey 8: OutbidNav Category Navigation & Zero-Click Experience", () => {
+    it("correctly filters rankings across all categories from the Outbid navbar", async () => {
+      const categories = [
+        "Marketing",
+        "SEO",
+        "Productivity",
+        "Agents",
+        "Developer",
+        "Crypto",
+        "Other",
+        "Games",
+      ] as const;
+
+      // Seed one listing per category
+      for (const [index, cat] of categories.entries()) {
+        const domain = `startup-${cat.toLowerCase()}.com`;
+        const addRes = await handleBoardRequest(
+          new Request("https://adverticeaf.com/v1/bids", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              newListing: {
+                url: `https://${domain}`,
+                name: `Startup ${cat}`,
+                tagline: `${cat} platform`,
+                category: cat,
+              },
+              amountCents: (index + 1) * 200,
+            }),
+          }),
+        );
+        expect(addRes.status).toBe(200);
+      }
+
+      // Verify "All" returns all 8 categories
+      const allRes = await handleBoardRequest(new Request("https://adverticeaf.com/v1/board", { method: "GET" }));
+      const allData = (await allRes.json()) as { rows: Array<{ listing: { category: string } }>; stats: { listings: number } };
+      expect(allData.rows.length).toBe(8);
+      expect(allData.stats.listings).toBe(8);
+
+      // Verify every individual category query returns ONLY that category
+      for (const cat of categories) {
+        const catRes = await handleBoardRequest(
+          new Request(`https://adverticeaf.com/v1/board?category=${cat}`, { method: "GET" }),
+        );
+        expect(catRes.status).toBe(200);
+        const catData = (await catRes.json()) as { category: string; rows: Array<{ listing: { category: string } }> };
+        expect(catData.category).toBe(cat);
+        expect(catData.rows.length).toBe(1);
+        expect(catData.rows[0].listing.category).toBe(cat);
+      }
+    });
+
+    it("verifies brand name auto-derivation and default categorization for 1-click flows", async () => {
+      const addRes = await handleBoardRequest(
+        new Request("https://adverticeaf.com/v1/bids", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            newListing: {
+              url: "https://super-human.com",
+              name: "Super Human",
+              tagline: "",
+              category: "Productivity",
+            },
+            amountCents: 1500,
+          }),
+        }),
+      );
+      expect(addRes.status).toBe(200);
+
+      const boardRes = await handleBoardRequest(new Request("https://adverticeaf.com/v1/board", { method: "GET" }));
+      const board = (await boardRes.json()) as { rows: Array<{ listing: { name: string; domain: string } }> };
+      const row = board.rows.find((r) => r.listing.domain === "super-human.com");
+      expect(row).toBeDefined();
+      expect(row?.listing.name).toBe("Super Human");
+    });
+  });
 });

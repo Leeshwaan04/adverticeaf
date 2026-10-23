@@ -119,8 +119,18 @@ export default function BoardPage() {
 
   const handleNavSelect = (tab: NavTabId) => {
     setActiveTab(tab);
-    if (tab === "all" || tab === "leaderboards" || tab === "explore") {
+    if (tab === "all") {
       setCategory(null);
+    } else if (tab === "leaderboards") {
+      setCategory(null);
+      if (typeof window !== "undefined") {
+        document.getElementById("leaderboard-section")?.scrollIntoView({ behavior: "smooth" });
+      }
+    } else if (tab === "explore") {
+      setCategory(null);
+      if (typeof window !== "undefined") {
+        document.getElementById("explore-section")?.scrollIntoView({ behavior: "smooth" });
+      }
     } else {
       setCategory(tab as BoardCategory);
     }
@@ -546,7 +556,7 @@ export default function BoardPage() {
       {/* Main Content Layout: Leaderboard on Left, Activity & Hall of Fame on Right */}
       <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-12">
         {/* Leaderboard Table (8 cols on lg) */}
-        <div className="lg:col-span-8">
+        <div id="leaderboard-section" className="lg:col-span-8">
           {/* King of the Hill #1 Spotlight Card */}
           {snapshot && snapshot.rows.length > 0 && !category && (
             <div className="relative mb-6 overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-[#1a1714] to-[#12100e] p-5 sm:p-6 shadow-xl shadow-amber-500/5">
@@ -754,7 +764,7 @@ export default function BoardPage() {
         </div>
 
         {/* Sidebar: Hall of Fame & Live Activity (4 cols on lg) */}
-        <div className="space-y-6 lg:col-span-4">
+        <div id="explore-section" className="space-y-6 lg:col-span-4">
           {/* Hall of Fame Box */}
           <div className="rounded-2xl border border-line bg-surface p-5">
             <div className="flex items-center gap-2 border-b border-line pb-3">

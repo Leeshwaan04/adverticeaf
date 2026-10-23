@@ -230,7 +230,7 @@ function renderOgSvg(params: {
   const rankColor = isTop1 ? "#fbbf24" : "#22d3ee";
   const rankBg = isTop1 ? "rgba(251, 191, 36, 0.15)" : "rgba(34, 211, 238, 0.15)";
   const rankBorder = isTop1 ? "rgba(251, 191, 36, 0.4)" : "rgba(34, 211, 238, 0.3)";
-  const badgeLabel = isTop1 ? "👑 #1 RANK · KING OF THE HILL" : `#${params.rank} RANK ON BOARD`;
+  const badgeLabel = isTop1 ? "#1 RANK · KING OF THE HILL" : `#${params.rank} RANK ON BOARD`;
 
   const safeName = escapeXml(params.name);
   const safeDomain = escapeXml(params.domain);
@@ -349,14 +349,14 @@ async function notifyOutbid(
             body: JSON.stringify({
               from: "AdverticeAF Alerts <alerts@adverticeaf.com>",
               to: email,
-              subject: `⚡ You've been outbid by ${bidderName} on AdverticeAF!`,
+              subject: `You've been outbid by ${bidderName} on AdverticeAF`,
               html: `
                 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #030712; color: #f1f5f9; padding: 36px 24px; border-radius: 12px; max-width: 540px; margin: 0 auto; border: 1px solid #1e293b;">
                   <div style="display: inline-block; padding: 4px 10px; background-color: rgba(34, 211, 238, 0.15); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 9999px; font-size: 11px; font-weight: 700; color: #22d3ee; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 16px;">
                     Live Attention Market
                   </div>
                   <h2 style="margin: 0 0 12px; font-size: 22px; font-weight: 800; color: #ffffff;">
-                    ⚡ You just got outbid!
+                    You just got outbid
                   </h2>
                   <p style="margin: 0 0 16px; font-size: 14px; line-height: 1.6; color: #94a3b8;">
                     <strong>${bidderName}</strong> (${bidderDomain}) just placed a bid and moved ahead of <strong>${domain}</strong> on the public leaderboard.
