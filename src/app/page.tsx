@@ -36,7 +36,7 @@ import {
   type SeasonId,
 } from "@/lib/board/config";
 import { formatUsd } from "@/lib/board/format";
-import { checkListingUrl, type ListingErrors, type ListingFields as Fields } from "@/lib/board/listing";
+import { checkListingUrl, deriveBrandName, type ListingErrors, type ListingFields as Fields } from "@/lib/board/listing";
 import type {
   ActivityItem,
   BoardRow,
@@ -108,6 +108,10 @@ export default function BoardPage() {
   const [serverQuote, setServerQuote] = useState<Quote | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
+  // Fast-Add Bar State
+  const [fastUrl, setFastUrl] = useState("");
+  const [fastError, setFastError] = useState<string | null>(null);
+
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 60000);
     return () => clearInterval(t);
@@ -137,6 +141,35 @@ export default function BoardPage() {
     setCustomAmountStr("");
     setBidOpen(true);
   }, [category, snapshot]);
+
+  const handleFastClaim = useCallback((e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const raw = fastUrl.trim();
+    if (!raw) {
+      setFastError("Please enter your website address.");
+      return;
+    }
+    const check = checkListingUrl(raw);
+    if (!check.ok) {
+      setFastError(check.error || "Please enter a valid website URL.");
+      return;
+    }
+    setFastError(null);
+    const brand = deriveBrandName(raw);
+    setIsNew(true);
+    setTargetDomain(null);
+    setListingForm({
+      url: check.url,
+      name: brand,
+      tagline: "",
+      category: category ?? "Marketing",
+    });
+    setFormErrors({});
+    const minLead = snapshot ? snapshot.leadCostCents : RULES.minBidCents;
+    setBidAmountCents(Math.max(minLead, 1000));
+    setCustomAmountStr("");
+    setBidOpen(true);
+  }, [fastUrl, category, snapshot]);
 
   useEffect(() => {
     const handleOpen = () => openBidNew();
@@ -301,19 +334,20 @@ export default function BoardPage() {
   }
 
   async function handleConfirmPurchase() {
+    let finalUrl = listingForm.url;
+    let finalName = listingForm.name.trim();
+    const finalCategory = (listingForm.category || "Marketing") as BoardCategory;
+    const finalTagline = listingForm.tagline.trim();
+
     if (isNew) {
       const check = checkListingUrl(listingForm.url);
       if (!check.ok) {
         setFormErrors({ url: check.error });
         return { ok: false as const, error: check.error };
       }
-      if (!listingForm.name.trim()) {
-        setFormErrors({ name: "Enter a name for your listing." });
-        return { ok: false as const, error: "Enter a name for your listing." };
-      }
-      if (!listingForm.category) {
-        setFormErrors({ category: "Select a category." });
-        return { ok: false as const, error: "Select a category." };
+      finalUrl = check.url;
+      if (!finalName) {
+        finalName = deriveBrandName(listingForm.url);
       }
     }
 
@@ -323,12 +357,12 @@ export default function BoardPage() {
         domain: isNew ? undefined : targetDomain ?? undefined,
         email: alertEmail.trim() || undefined,
         newListing:
-          isNew && listingForm.category
+          isNew
             ? {
-                url: listingForm.url,
-                name: listingForm.name,
-                tagline: listingForm.tagline,
-                category: listingForm.category as BoardCategory,
+                url: finalUrl,
+                name: finalName,
+                tagline: finalTagline,
+                category: finalCategory,
               }
             : undefined,
         amountCents: bidAmountCents,
@@ -359,8 +393,8 @@ export default function BoardPage() {
       </div>
 
       {/* Top Banner & Header */}
-      <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-        <div>
+      <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+        <div className="max-w-3xl">
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold text-accent border border-accent/20">
               <Sparkles className="h-3.5 w-3.5" />
@@ -371,12 +405,43 @@ export default function BoardPage() {
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-fg sm:text-4xl lg:text-5xl font-display">
             Outbid & Rank #1
           </h1>
-          <p className="mt-2 max-w-2xl text-base text-muted">
-            The live pay-to-rank public leaderboard. Top bidders hold the crown and get direct eyeballs from creators, founders, and advertisers worldwide.
+          <p className="mt-2 text-base text-muted">
+            The live pay-to-rank public leaderboard. Claim rank #1 instantly with minimal clicks.
           </p>
+
+          {/* 1-Click Hero Fast-Bid Bar */}
+          <form
+            onSubmit={handleFastClaim}
+            className="mt-5 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-1.5 rounded-2xl border border-accent/40 bg-surface/90 shadow-2xl shadow-accent/10 backdrop-blur-md"
+          >
+            <div className="flex items-center gap-2.5 flex-1 px-3 py-2">
+              <Globe className="h-5 w-5 text-accent shrink-0" />
+              <input
+                type="text"
+                inputMode="url"
+                value={fastUrl}
+                onChange={(e) => {
+                  setFastUrl(e.target.value);
+                  if (fastError) setFastError(null);
+                }}
+                placeholder="Enter your website (e.g. acme.com)"
+                className="w-full bg-transparent text-sm sm:text-base font-medium text-fg placeholder:text-muted/70 focus:outline-none"
+              />
+            </div>
+            <button
+              type="submit"
+              className="flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-extrabold text-accent-ink hover:bg-accent-hover transition-all shadow-md shadow-accent/20 shrink-0 cursor-pointer"
+            >
+              <Crown className="h-4 w-4" />
+              <span>Claim Rank #1 {snapshot ? `(${formatUsd(snapshot.leadCostCents)})` : ""}</span>
+            </button>
+          </form>
+          {fastError && (
+            <p className="mt-2 text-xs font-semibold text-danger">{fastError}</p>
+          )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 shrink-0 pt-2">
           <Button
             variant="primary"
             onClick={openBidNew}
@@ -394,43 +459,38 @@ export default function BoardPage() {
         </div>
       </div>
 
-      {/* Stats Counter Grid */}
-      <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="rounded-2xl border border-line bg-surface/50 p-4 backdrop-blur-sm">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted">
-            <Globe className="h-3.5 w-3.5 text-accent" />
-            Listings Ranked
-          </div>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-fg font-display">
-            {snapshot ? snapshot.stats.listings : "..."}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-line bg-surface/50 p-4 backdrop-blur-sm">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted">
-            <TrendingUp className="h-3.5 w-3.5 text-ok" />
-            Total Volume
-          </div>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-fg font-display">
-            {snapshot ? formatUsd(snapshot.stats.totalCents) : "..."}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-line bg-surface/50 p-4 backdrop-blur-sm">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted">
-            <MousePointerClick className="h-3.5 w-3.5 text-accent" />
-            Clicks Delivered
-          </div>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-fg font-display">
-            {snapshot ? snapshot.stats.clicks.toLocaleString() : "..."}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-line bg-surface/50 p-4 backdrop-blur-sm">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted">
-            <Crown className="h-3.5 w-3.5 text-amber-400" />
-            Cost to Take #1
-          </div>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-accent font-display">
+      {/* Sleek Compact Stats Ticker */}
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-line/60 bg-surface/60 px-5 py-3.5 backdrop-blur-md">
+        <div className="flex items-center gap-2 text-xs sm:text-sm">
+          <Crown className="h-4 w-4 text-amber-400 shrink-0" />
+          <span className="text-muted">To Take #1:</span>
+          <span className="font-extrabold text-accent font-display text-sm sm:text-base">
             {snapshot ? formatUsd(snapshot.leadCostCents) : "..."}
-          </p>
+          </span>
+        </div>
+        <div className="hidden sm:block h-4 w-px bg-line/80" />
+        <div className="flex items-center gap-2 text-xs sm:text-sm">
+          <Globe className="h-4 w-4 text-accent shrink-0" />
+          <span className="text-muted">Ranked Brands:</span>
+          <span className="font-bold text-fg font-display text-sm sm:text-base">
+            {snapshot ? snapshot.stats.listings : "..."}
+          </span>
+        </div>
+        <div className="hidden sm:block h-4 w-px bg-line/80" />
+        <div className="flex items-center gap-2 text-xs sm:text-sm">
+          <TrendingUp className="h-4 w-4 text-ok shrink-0" />
+          <span className="text-muted">Total Volume:</span>
+          <span className="font-bold text-fg font-display text-sm sm:text-base">
+            {snapshot ? formatUsd(snapshot.stats.totalCents) : "..."}
+          </span>
+        </div>
+        <div className="hidden sm:block h-4 w-px bg-line/80" />
+        <div className="flex items-center gap-2 text-xs sm:text-sm">
+          <MousePointerClick className="h-4 w-4 text-accent shrink-0" />
+          <span className="text-muted">Clicks Delivered:</span>
+          <span className="font-bold text-fg font-display text-sm sm:text-base">
+            {snapshot ? snapshot.stats.clicks.toLocaleString() : "..."}
+          </span>
         </div>
       </div>
 
@@ -929,7 +989,7 @@ export default function BoardPage() {
           {/* Checkout Panel */}
           {(() => {
             const isFormIncomplete = isNew
-              ? (!listingForm.url.trim() || !listingForm.name.trim() || !listingForm.category)
+              ? !listingForm.url.trim()
               : !targetDomain;
             const isAmountInvalid = bidAmountCents < RULES.minBidCents;
 
@@ -938,7 +998,7 @@ export default function BoardPage() {
                 lines={[
                   {
                     label: isNew
-                      ? `New Board Placement (${listingForm.name.trim() || "Your Brand"})`
+                      ? `New Board Placement (${listingForm.name.trim() || deriveBrandName(listingForm.url) || "Your Brand"})`
                       : `Rank Boost (${targetDomain})`,
                     amountCents: bidAmountCents,
                   },
@@ -950,7 +1010,7 @@ export default function BoardPage() {
                   isAmountInvalid
                     ? `Minimum bid is ${formatUsd(RULES.minBidCents)}`
                     : isFormIncomplete
-                    ? "Enter your link and brand name above to continue"
+                    ? "Enter your website URL above to continue"
                     : undefined
                 }
               />

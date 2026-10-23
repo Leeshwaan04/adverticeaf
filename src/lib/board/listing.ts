@@ -114,3 +114,22 @@ export function validateListing(f: ListingFields): { errors: ListingErrors; url?
 }
 
 export const EMPTY_LISTING: ListingFields = { url: "", name: "", tagline: "", category: "" };
+
+/** Automatically derive a clean, human-readable brand name from a URL or domain. */
+export function deriveBrandName(input: string): string {
+  const raw = input.trim();
+  if (!raw) return "Your Brand";
+  try {
+    const cleaned = raw.replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0].split(":")[0];
+    const segment = cleaned.split(".")[0];
+    if (!segment) return "Your Brand";
+    return segment
+      .split(/[-_]/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(" ");
+  } catch {
+    return "Your Brand";
+  }
+}
+

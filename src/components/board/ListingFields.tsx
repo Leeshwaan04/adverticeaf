@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { SelectField, TextField } from "@/components/ui/Field";
 import { BOARD_CATEGORIES, RULES } from "@/lib/board/config";
-import { checkListingUrl, type ListingErrors, type ListingFields as Fields } from "@/lib/board/listing";
+import { checkListingUrl, deriveBrandName, type ListingErrors, type ListingFields as Fields } from "@/lib/board/listing";
 
 interface Props {
   values: Fields;
@@ -15,52 +17,89 @@ interface Props {
   taglineMax?: number;
 }
 
-/** Shared listing form: link, name, tagline, category. Shows exactly what link will be used. */
-export default function ListingFields({ values, errors, onChange, lockUrl, taglineLabel = "Tagline", taglineMax = RULES.taglineMax }: Props) {
+/** Streamlined listing form: URL + auto-derived Name, with optional expandable tagline/category. */
+export default function ListingFields({
+  values,
+  errors,
+  onChange,
+  lockUrl,
+  taglineLabel = "Tagline (optional)",
+  taglineMax = RULES.taglineMax,
+}: Props) {
+  const [showAdvanced, setShowAdvanced] = useState(() => Boolean(values.tagline || (values.category && values.category !== "Marketing")));
   const check = values.url.trim() ? checkListingUrl(values.url) : null;
+
+  const handleUrlChange = (newUrl: string) => {
+    onChange("url", newUrl);
+    // If name is blank or matches a previously derived name, auto-fill it
+    if (!values.name.trim() && newUrl.trim()) {
+      const derived = deriveBrandName(newUrl);
+      if (derived && derived !== "Your Brand") {
+        onChange("name", derived);
+      }
+    }
+  };
+
   return (
     <div className="space-y-4">
       {!lockUrl && (
         <TextField
-          label="Link people will visit"
+          label="Your Website URL"
           name="url"
           inputMode="url"
           autoComplete="url"
           placeholder="yourbrand.com"
           value={values.url}
           error={errors.url}
-          hint={check && check.ok ? `We will link to ${check.url}. Tracking parameters are removed.` : "Your own website, app page or profile. No shorteners or invite links."}
-          onChange={(e) => onChange("url", e.target.value)}
+          hint={check && check.ok ? `Will link to ${check.url}` : "Enter your website address (e.g. acme.com)"}
+          onChange={(e) => handleUrlChange(e.target.value)}
         />
       )}
       <TextField
-        label="Name"
+        label="Brand Name"
         name="name"
-        maxLength={RULES.nameMax + 10}
-        placeholder="Your brand"
+        maxLength={RULES.nameMax}
+        placeholder="Your Brand"
         value={values.name}
         error={errors.name}
         hint={`${values.name.trim().length}/${RULES.nameMax}`}
         onChange={(e) => onChange("name", e.target.value)}
       />
-      <TextField
-        label={taglineLabel}
-        name="tagline"
-        maxLength={taglineMax + 10}
-        placeholder="What you do, in a few words"
-        value={values.tagline}
-        error={errors.tagline}
-        hint={`${values.tagline.trim().length}/${taglineMax}`}
-        onChange={(e) => onChange("tagline", e.target.value)}
-      />
-      <SelectField
-        label="Category"
-        name="category"
-        options={["", ...BOARD_CATEGORIES]}
-        value={values.category}
-        error={errors.category}
-        onChange={(e) => onChange("category", e.target.value)}
-      />
+
+      {/* Advanced Details Toggle */}
+      <div className="border-t border-line/60 pt-2">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((prev) => !prev)}
+          className="flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline"
+        >
+          {showAdvanced ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          <span>{showAdvanced ? "Hide Extra Details" : "Add Tagline & Category (optional)"}</span>
+        </button>
+
+        {showAdvanced && (
+          <div className="mt-3 space-y-4 rounded-xl border border-line bg-raised/40 p-3.5">
+            <TextField
+              label={taglineLabel}
+              name="tagline"
+              maxLength={taglineMax}
+              placeholder="What you do in a few words"
+              value={values.tagline}
+              error={errors.tagline}
+              hint={`${values.tagline.trim().length}/${taglineMax}`}
+              onChange={(e) => onChange("tagline", e.target.value)}
+            />
+            <SelectField
+              label="Category"
+              name="category"
+              options={["", ...BOARD_CATEGORIES]}
+              value={values.category || "Marketing"}
+              error={errors.category}
+              onChange={(e) => onChange("category", e.target.value)}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

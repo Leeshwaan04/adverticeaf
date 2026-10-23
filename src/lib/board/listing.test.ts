@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkListingUrl, checkText, validateListing } from "./listing";
+import { checkListingUrl, checkText, deriveBrandName, validateListing } from "./listing";
 
 describe("checkListingUrl", () => {
   it("adds https, lowercases the host, drops www and keys by host", () => {
@@ -50,3 +50,19 @@ describe("validateListing", () => {
     expect(good.url?.key).toBe("acme.example");
   });
 });
+
+describe("deriveBrandName", () => {
+  it("derives clean human-readable brand names from domains and URLs", () => {
+    expect(deriveBrandName("sypha.ai")).toBe("Sypha");
+    expect(deriveBrandName("https://stripe.com")).toBe("Stripe");
+    expect(deriveBrandName("https://www.cal.com/meeting")).toBe("Cal");
+    expect(deriveBrandName("super-human.com")).toBe("Super Human");
+    expect(deriveBrandName("my_cool_startup.io")).toBe("My Cool Startup");
+  });
+
+  it("handles blank or malformed input gracefully with fallback", () => {
+    expect(deriveBrandName("")).toBe("Your Brand");
+    expect(deriveBrandName("   ")).toBe("Your Brand");
+  });
+});
+
