@@ -10,9 +10,52 @@ export const metadata: Metadata = {
   alternates: { canonical: "/board/rules" },
 };
 
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "How is rank calculated on AdverticeAF?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Rank is sorted in descending order of total USD spent within the active season. The listing with the highest approved spend is #1. Ties are broken by chronological order (who achieved the total amount first).",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "What is the minimum bid?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: `The minimum bid is ${formatUsd(RULES.minBidCents)} USD. All bids move in whole dollar increments. To take the #1 spot, your total spend must exceed the current leader by at least ${formatUsd(RULES.leadMarginCents)}.`,
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Do I lose my spend if someone outbids me?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "No, spend accumulates permanently on your listing across all-time boards. When another bidder overtakes you, your position drops to #2, but your total spend stays credited to your domain. You can boost again at any time to regain #1.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "How does domain verification work?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Domain owners can verify ownership by adding a simple DNS TXT record or HTML meta tag. Verified listings receive an authentic green badge, protecting their brand identity and building trust with visitors.",
+      },
+    },
+  ],
+};
+
 export default function RulesPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema).replace(/</g, "\\u003c") }}
+      />
       <div className="mb-6">
         <Link
           href="/"

@@ -3,7 +3,6 @@ import { boardStats, costToLead, rankListings, seasonWindow } from "../src/lib/b
 import type { ActivityItem, Bid, BoardSnapshot, HallOfFame, Listing } from "../src/lib/board/types.ts";
 import { formatUsd } from "../src/lib/board/format.ts";
 import { checkListingUrl } from "../src/lib/board/listing.ts";
-import { buildSeed } from "../src/lib/board/demo.ts";
 import { verifyWebhook } from "./payments.ts";
 
 export interface BoardEnv {
@@ -40,12 +39,34 @@ let globalClicks: Record<string, number> = {};
 const globalAlerts: Record<string, string[]> = {};
 const globalVerifications: Record<string, { token: string; verified: boolean }> = {};
 
-function ensureInit(now: number) {
-  if (initialized && globalListings.length > 0) return;
-  const seed = buildSeed(now);
-  globalListings = seed.listings.map((l) => ({ ...l, sample: undefined }));
-  globalBids = seed.bids.map((b) => ({ ...b, sample: undefined }));
-  globalClicks = { ...seed.clicks };
+// Server-Sent Events subscribers for real-time live feed updates
+const sseSubscribers = new Set<ReadableStreamDefaultController<Uint8Array>>();
+
+export function broadcastBoardEvent(type: string, data: unknown) {
+  const payload = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
+  const encoded = new TextEncoder().encode(payload);
+  for (const controller of sseSubscribers) {
+    try {
+      controller.enqueue(encoded);
+    } catch {
+      sseSubscribers.delete(controller);
+    }
+  }
+}
+
+export function resetBoardMemoryForTesting() {
+  globalListings = [];
+  globalBids = [];
+  globalClicks = {};
+  initialized = true;
+}
+
+function ensureInit() {
+  if (initialized) return;
+  // Starting 100% clean from scratch: zero mock listings, zero seed bids
+  globalListings = [];
+  globalBids = [];
+  globalClicks = {};
   initialized = true;
 }
 
@@ -100,34 +121,22 @@ async function syncD1(env: BoardEnv | undefined, now: number) {
         );
       `).run().catch(() => {});
 
-      dbInitialized = true;
-    }
+      // One-time purge of any old seed / dummy demo data from earlier local prototypes
+      await env.PROMOTIONS_DB.prepare(
+        "DELETE FROM board_listings WHERE domain IN ('sypha.ai', 'hyperbeam.io', 'cal.com', 'cursor.sh', 'resend.com', 'raycast.com', 'linear.app', 'v0.dev', 'superhuman.com', 'dub.co', 'posthog.com', 'midjourney.com', 'perplexity.ai', 'anthropic.com', 'openai.com')"
+      ).run().catch(() => {});
+      await env.PROMOTIONS_DB.prepare(
+        "DELETE FROM board_bids WHERE domain IN ('sypha.ai', 'hyperbeam.io', 'cal.com', 'cursor.sh', 'resend.com', 'raycast.com', 'linear.app', 'v0.dev', 'superhuman.com', 'dub.co', 'posthog.com', 'midjourney.com', 'perplexity.ai', 'anthropic.com', 'openai.com')"
+      ).run().catch(() => {});
 
-    const countRes = await env.PROMOTIONS_DB.prepare("SELECT COUNT(*) as cnt FROM board_listings").first<{ cnt: number }>().catch(() => null);
-    if (!countRes || countRes.cnt === 0) {
-      const seed = buildSeed(now);
-      for (const l of seed.listings) {
-        await env.PROMOTIONS_DB.prepare(
-          "INSERT OR IGNORE INTO board_listings (domain, name, url, category, tagline, created_at, verified) VALUES (?, ?, ?, ?, ?, ?, ?)"
-        ).bind(l.domain, l.name, l.url, l.category, l.tagline, l.createdAt, l.verified ? 1 : 0).run().catch(() => {});
-      }
-      for (const b of seed.bids) {
-        await env.PROMOTIONS_DB.prepare(
-          "INSERT OR IGNORE INTO board_bids (id, domain, amount_cents, created_at) VALUES (?, ?, ?, ?)"
-        ).bind(b.id, b.domain, b.amountCents, b.at).run().catch(() => {});
-      }
-      for (const [dom, cnt] of Object.entries(seed.clicks)) {
-        await env.PROMOTIONS_DB.prepare(
-          "INSERT OR REPLACE INTO board_clicks (domain, count) VALUES (?, ?)"
-        ).bind(dom, cnt).run().catch(() => {});
-      }
+      dbInitialized = true;
     }
 
     const listingsRes = await env.PROMOTIONS_DB.prepare(
       "SELECT domain, name, url, category, tagline, created_at as createdAt, verified FROM board_listings"
     ).all<{ domain: string; name: string; url: string; category: string; tagline: string; createdAt: number; verified: number }>().catch(() => null);
 
-    if (listingsRes?.results && listingsRes.results.length > 0) {
+    if (listingsRes?.results) {
       globalListings = listingsRes.results.map((r) => ({
         domain: r.domain,
         name: r.name,
@@ -423,7 +432,7 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
   }
 
   const now = Date.now();
-  ensureInit(now);
+  ensureInit();
 
   // Sync with persistent Cloudflare D1 database if bound
   if (env?.PROMOTIONS_DB) {
@@ -459,6 +468,31 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
     };
 
     return json(snapshot);
+  }
+
+  // GET /v1/events (Real-Time SSE Event Stream)
+  if (path === "/events" && request.method === "GET") {
+    let clientController: ReadableStreamDefaultController<Uint8Array> | null = null;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        clientController = controller;
+        sseSubscribers.add(controller);
+        const welcome = `event: connected\ndata: ${JSON.stringify({ ok: true, now })}\n\n`;
+        controller.enqueue(new TextEncoder().encode(welcome));
+      },
+      cancel() {
+        if (clientController) sseSubscribers.delete(clientController);
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
   }
 
   // GET /v1/og (Dynamic OpenGraph & Twitter Social Card Generator)
@@ -873,6 +907,8 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
       void notifyOutbid(env, overtaken, targetListing.domain, targetListing.name, now);
     }
 
+    broadcastBoardEvent("bid_placed", { domain: targetListing.domain, amountCents, now });
+
     return json({
       ok: true,
       bid: newBid,
@@ -982,6 +1018,8 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
           if (overtaken.length > 0) {
             void notifyOutbid(env, overtaken, domain, listing?.name || domain, now);
           }
+
+          broadcastBoardEvent("bid_placed", { domain, amountCents: amount, now });
         }
       }
     } catch (err) {
@@ -1001,6 +1039,7 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
           "INSERT INTO board_clicks (domain, count) VALUES (?, 1) ON CONFLICT(domain) DO UPDATE SET count = count + 1"
         ).bind(body.domain).run().catch(console.error);
       }
+      broadcastBoardEvent("click_recorded", { domain: body.domain, clicks: globalClicks[body.domain] });
     }
     return json({ ok: true });
   }

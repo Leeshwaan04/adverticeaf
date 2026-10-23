@@ -1,8 +1,12 @@
-import { describe, it, expect } from "vitest";
-import { handleBoardRequest, type BoardEnv } from "../../../server/board";
+import { describe, it, expect, beforeEach } from "vitest";
+import { handleBoardRequest, resetBoardMemoryForTesting, type BoardEnv } from "../../../server/board";
 
 describe("Server Board API Endpoints & VAPT Security", () => {
-  it("GET /v1/board returns live snapshot with rankings and stats", async () => {
+  beforeEach(() => {
+    resetBoardMemoryForTesting();
+  });
+
+  it("GET /v1/board returns clean slate live snapshot from scratch", async () => {
     const req = new Request("https://adverticeaf.com/v1/board", { method: "GET" });
     const res = await handleBoardRequest(req);
     expect(res.status).toBe(200);
@@ -17,19 +21,18 @@ describe("Server Board API Endpoints & VAPT Security", () => {
     };
 
     expect(data.mode).toBe("live");
-    expect(data.rows.length).toBeGreaterThan(0);
-    expect(data.rows[0].rank).toBe(1);
-    expect(data.leadCostCents).toBeGreaterThanOrEqual(100);
-    expect(data.stats.listings).toBeGreaterThanOrEqual(data.rows.length);
+    expect(data.rows.length).toBe(0);
+    expect(data.leadCostCents).toBe(100);
+    expect(data.stats.listings).toBe(0);
   });
 
-  it("POST /v1/quote calculates rank projections correctly with complete schema", async () => {
+  it("POST /v1/quote calculates rank projections correctly for new listings", async () => {
     const req = new Request("https://adverticeaf.com/v1/quote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        domain: "sypha.ai",
-        amountCents: 500000,
+        domain: "mybrand.com",
+        amountCents: 500,
       }),
     });
 
@@ -44,11 +47,19 @@ describe("Server Board API Endpoints & VAPT Security", () => {
       tookLead: boolean;
     };
     expect(data.ok).toBe(true);
-    expect(data.domain).toBe("sypha.ai");
-    expect(data.amountCents).toBe(500000);
-    expect(data.costToLeadCents).toBeGreaterThan(0);
+    expect(data.domain).toBe("mybrand.com");
+    expect(data.amountCents).toBe(500);
+    expect(data.costToLeadCents).toBe(100);
     expect(data.newRank).toBe(1);
     expect(data.tookLead).toBe(true);
+  });
+
+  it("GET /v1/events connects to live Server-Sent Events stream", async () => {
+    const req = new Request("https://adverticeaf.com/v1/events", { method: "GET" });
+    const res = await handleBoardRequest(req);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/event-stream");
+    expect(res.body).not.toBeNull();
   });
 
   it("POST /v1/alerts registers an email for outbid alerts", async () => {

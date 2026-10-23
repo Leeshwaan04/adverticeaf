@@ -7,7 +7,7 @@ import { checkListingUrl } from "./listing";
 import { createStore } from "./store";
 import type { BoardApi, ListingDetail } from "./types";
 
-export const MINE_KEY = "adv-board-mine-v1";
+export const MINE_KEY = "adv-board-mine-v2";
 const MAX_MINE = 50;
 
 const mineStore = createStore<string[]>(MINE_KEY, () => []);

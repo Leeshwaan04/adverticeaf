@@ -379,11 +379,37 @@ export const httpAdapter: BoardAdapter = {
     });
   },
 
-  /** The live API is polled: simple, works on any static host, and pauses while the tab is hidden. */
+  /** Connects to live SSE /v1/events for instant sub-second board updates, with polling fallback. */
   subscribe(cb) {
-    const id = setInterval(() => {
+    let es: EventSource | null = null;
+    let fallbackTimer: ReturnType<typeof setInterval> | null = null;
+
+    if (typeof window !== "undefined" && typeof window.EventSource !== "undefined") {
+      try {
+        es = new window.EventSource(`${BOARD_API_BASE}/v1/events`);
+        const trigger = () => {
+          if (typeof document === "undefined" || document.visibilityState === "visible") cb();
+        };
+        es.onmessage = trigger;
+        es.addEventListener("board_updated", trigger);
+        es.addEventListener("bid_placed", trigger);
+        es.addEventListener("click_recorded", trigger);
+      } catch {
+        // Fall back to polling
+      }
+    }
+
+    fallbackTimer = setInterval(() => {
       if (typeof document === "undefined" || document.visibilityState === "visible") cb();
     }, POLL_MS);
-    return () => clearInterval(id);
+
+    return () => {
+      if (es) {
+        es.close();
+      }
+      if (fallbackTimer) {
+        clearInterval(fallbackTimer);
+      }
+    };
   },
 };

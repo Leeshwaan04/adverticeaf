@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "adverticeaf",
+  "compatibility_date": "2026-10-20",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "pages_build_output_dir": "out",
+  "d1_databases": [
+    {
+      "binding": "PROMOTIONS_DB",
+      "database_name": "adverticeaf-db",
+      "database_id": "adverticeaf-db"
+    }
+  ],
+  "vars": {
+    "DODO_PRODUCT_ID": "pdt_0NqIgdtfqfzuWtAc5O3Yk",
+    "DODO_PAYMENTS_ENVIRONMENT": "live_mode",
+    "PAYMENTS_SITE_URL": "https://adverticeaf.com"
+  }
+}

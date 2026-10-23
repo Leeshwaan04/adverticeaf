@@ -8,7 +8,9 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run && node --experimental-strip-types --test server/payments.test.ts"
+    "test": "vitest run && node --experimental-strip-types --test server/payments.test.ts",
+    "d1:migrate:local": "wrangler d1 execute adverticeaf-db --local --file=./migrations/0002_board.sql",
+    "d1:migrate:remote": "wrangler d1 execute adverticeaf-db --remote --file=./migrations/0002_board.sql"
   },
   "dependencies": {
     "@types/canvas-confetti": "^1.9.0",
