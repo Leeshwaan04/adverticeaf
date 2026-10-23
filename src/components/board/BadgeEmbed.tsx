@@ -11,12 +11,13 @@ export interface BadgeEmbedProps {
   href: string;
 }
 
-type Kind = "html" | "markdown" | "link";
+type Kind = "html" | "markdown" | "link" | "iframe";
 
 const KINDS: { kind: Kind; title: string; hint: string }[] = [
   { kind: "html", title: "HTML", hint: "Paste into your site or email signature." },
   { kind: "markdown", title: "Markdown", hint: "Paste into a README or a post." },
   { kind: "link", title: "Plain link", hint: "Paste anywhere." },
+  { kind: "iframe", title: "Live Widget", hint: "Embed live ranking widget directly on your site." },
 ];
 
 interface Status {

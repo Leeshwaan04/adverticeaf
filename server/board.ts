@@ -530,6 +530,54 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
     });
   }
 
+  // GET /v1/digest (Daily/Weekly Leaderboard Digest Rollup)
+  if (path === "/digest" && request.method === "GET") {
+    const rawSeason = url.searchParams.get("season") || "all";
+    const season: SeasonId = ["daily", "weekly", "monthly", "all"].includes(rawSeason)
+      ? (rawSeason as SeasonId)
+      : "all";
+    const window = seasonWindow(season, now);
+    const rows = rankListings(globalListings, globalBids, globalClicks, window, null, now);
+    const stats = boardStats(rows);
+    const topKing = rows[0] || null;
+    const top5 = rows.slice(0, 5);
+
+    const leaderLines = top5.map(
+      (r, i) => `${i + 1}. ${r.listing.name} (${r.listing.domain}) - ${formatUsd(r.totalCents)} [${r.clicks} clicks]`
+    ).join("\n");
+
+    const plainText = topKing
+      ? `AdverticeAF Leaderboard Digest\n\nKing of the Hill (#1): ${topKing.listing.name} (${topKing.listing.domain}) with ${formatUsd(topKing.totalCents)}\n\nTop Leaders:\n${leaderLines}\n\nTotal Market Volume: ${formatUsd(stats.totalCents)} across ${stats.listings} brands.\nCost to take #1: ${formatUsd(costToLead(rows))}\n\nView live: https://adverticeaf.com`
+      : `AdverticeAF Leaderboard Digest\n\nNo brands ranked yet. Claim rank #1 now: https://adverticeaf.com`;
+
+    const markdown = topKing
+      ? `## AdverticeAF Leaderboard Digest\n\n**King of the Hill (#1)**: [${topKing.listing.name}](https://adverticeaf.com/?highlight=${topKing.listing.domain}) (${formatUsd(topKing.totalCents)})\n\n### Top Leaders\n${top5.map((r, i) => `${i + 1}. **${r.listing.name}** - ${formatUsd(r.totalCents)} (${r.clicks} clicks)`).join("\n")}\n\n* **Total Volume**: ${formatUsd(stats.totalCents)}\n* **Ranked Brands**: ${stats.listings}\n* **To Overtake #1**: ${formatUsd(costToLead(rows))}`
+      : `## AdverticeAF Leaderboard Digest\n\nNo brands ranked yet. [Claim Rank #1](https://adverticeaf.com)`;
+
+    return json({
+      ok: true,
+      season,
+      generatedAt: now,
+      topKing: topKing ? {
+        domain: topKing.listing.domain,
+        name: topKing.listing.name,
+        totalCents: topKing.totalCents,
+        category: topKing.listing.category,
+      } : null,
+      leaders: top5.map((r) => ({
+        rank: r.rank,
+        domain: r.listing.domain,
+        name: r.listing.name,
+        totalCents: r.totalCents,
+        clicks: r.clicks,
+      })),
+      stats,
+      leadCostCents: costToLead(rows),
+      plainText,
+      markdown,
+    });
+  }
+
   // POST /v1/quote
   if (path === "/quote" && request.method === "POST") {
     const body = await request.json().catch(() => ({})) as {

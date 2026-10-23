@@ -437,4 +437,45 @@ describe("E2E Sanity Testing — All User Scenarios, Flows & Journeys", () => {
       expect(row?.listing.name).toBe("Super Human");
     });
   });
+
+  describe("Journey 9: Daily & Weekly Leaderboard Digest Rollup", () => {
+    it("generates structured executive summaries and social-ready digest text", async () => {
+      // Seed #1 King
+      await handleBoardRequest(
+        new Request("https://adverticeaf.com/v1/bids", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            newListing: {
+              url: "https://sypha.ai",
+              name: "Sypha",
+              tagline: "Autonomous Agentic Systems",
+              category: "Agents",
+            },
+            amountCents: 5000,
+          }),
+        }),
+      );
+
+      const digestRes = await handleBoardRequest(new Request("https://adverticeaf.com/v1/digest", { method: "GET" }));
+      expect(digestRes.status).toBe(200);
+
+      const digest = (await digestRes.json()) as {
+        ok: boolean;
+        topKing: { name: string; domain: string; totalCents: number };
+        plainText: string;
+        markdown: string;
+      };
+
+      expect(digest.ok).toBe(true);
+      expect(digest.topKing?.name).toBe("Sypha");
+      expect(digest.topKing?.domain).toBe("sypha.ai");
+      expect(digest.topKing?.totalCents).toBe(5000);
+      expect(digest.plainText).toContain("King of the Hill (#1): Sypha (sypha.ai)");
+      expect(digest.markdown).toContain("[Sypha](https://adverticeaf.com/?highlight=sypha.ai)");
+      // Zero emojis
+      expect(/[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(digest.plainText)).toBe(false);
+      expect(/[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(digest.markdown)).toBe(false);
+    });
+  });
 });

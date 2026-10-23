@@ -35,8 +35,8 @@ describe("truncate", () => {
     expect(truncate("abc", 0)).toBe("");
     expect(truncate("abc", 1)).toBe("…");
   });
-  it("does not split emoji", () => {
-    expect(truncate("😀😀😀😀", 3)).toBe("😀😀…");
+  it("does not split surrogate unicode pairs", () => {
+    expect(truncate("\uD835\uDD38\uD835\uDD39\uD835\uDD3A\uD835\uDD3B", 3)).toBe("\uD835\uDD38\uD835\uDD39…");
   });
 });
 
@@ -228,7 +228,7 @@ describe("escaping", () => {
 describe("buildBadgeSnippets", () => {
   const href = "https://adverticeaf.example/board?id=abc";
 
-  it("builds html, markdown and link", () => {
+  it("builds html, markdown, link and iframe widget", () => {
     const s = buildBadgeSnippets("Ranked #3 on the AdverticeAF Board", href);
     expect(s).not.toBeNull();
     expect(s?.link).toBe(href);
@@ -237,6 +237,7 @@ describe("buildBadgeSnippets", () => {
     expect(s?.html).toContain(">Ranked #3 on the AdverticeAF Board</a>");
     expect(s?.html).toContain(`style="${badgeCss()}"`);
     expect(s?.markdown).toBe(`[Ranked \\#3 on the AdverticeAF Board](${href})`);
+    expect(s?.iframe).toContain('<iframe src="https://adverticeaf.com/embed"');
   });
   it("escapes the label in the HTML snippet so it cannot break out", () => {
     const s = buildBadgeSnippets(`</a><img src=x onerror="alert(1)">`, href);

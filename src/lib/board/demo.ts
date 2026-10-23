@@ -11,7 +11,7 @@ import {
   seasonWindow, settlePurchase, type Ledger,
 } from "./rules";
 import type {
-  BoardAdapter, Bid, ClickCounts, Listing, OkOrError, VerificationCheck, VerificationInfo,
+  BoardAdapter, Bid, BoardDigest, ClickCounts, Listing, OkOrError, VerificationCheck, VerificationInfo,
 } from "./types";
 
 export interface DemoState extends Ledger {
@@ -225,6 +225,44 @@ export const demoAdapter: BoardAdapter = {
     await delay(100);
     const s = current();
     return recentActivity(s.listings, s.bids, limit);
+  },
+
+  async getDigest(season = "all"): Promise<BoardDigest> {
+    await delay(100);
+    const s = current();
+    const now = Date.now();
+    const window = seasonWindow(season, now);
+    const rows = rankListings(s.listings, s.bids, s.clicks, window, null, now);
+    const stats = boardStats(rows);
+    const topKing = rows[0] || null;
+    const top5 = rows.slice(0, 5);
+
+    return {
+      ok: true,
+      season,
+      generatedAt: now,
+      topKing: topKing ? {
+        domain: topKing.listing.domain,
+        name: topKing.listing.name,
+        totalCents: topKing.totalCents,
+        category: topKing.listing.category,
+      } : null,
+      leaders: top5.map((r) => ({
+        rank: r.rank,
+        domain: r.listing.domain,
+        name: r.listing.name,
+        totalCents: r.totalCents,
+        clicks: r.clicks,
+      })),
+      stats,
+      leadCostCents: costToLead(rows),
+      plainText: topKing
+        ? `AdverticeAF Leaderboard Digest\n\nKing of the Hill (#1): ${topKing.listing.name} (${topKing.listing.domain})\nTotal Volume: $${(stats.totalCents / 100).toFixed(2)}`
+        : "AdverticeAF Leaderboard Digest\n\nNo brands ranked yet.",
+      markdown: topKing
+        ? `## AdverticeAF Leaderboard Digest\n\n**King of the Hill (#1)**: ${topKing.listing.name}`
+        : "## AdverticeAF Leaderboard Digest\n\nNo brands ranked yet.",
+    };
   },
 
   async getVerification(domain): Promise<VerificationInfo> {

@@ -113,4 +113,14 @@
   .skip-link:focus {
     top: 1rem;
   }
+
+  /* Embed widget mode: hide standard site navigation, partner banner, and footer */
+  body:has([data-embed-view]) header,
+  body:has([data-embed-view]) aside,
+  body:has([data-embed-view]) footer {
+    display: none !important;
+  }
+  body:has([data-embed-view]) {
+    background: transparent !important;
+  }
 }

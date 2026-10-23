@@ -119,6 +119,17 @@ export const api: BoardApi = {
     return demoAdapter.getActivity(limit);
   },
 
+  async getDigest(season) {
+    if (BOARD_MODE === "live") {
+      try {
+        return await httpAdapter.getDigest(season);
+      } catch {
+        // Fall back
+      }
+    }
+    return demoAdapter.getDigest(season);
+  },
+
   async getVerification(domain) {
     if (BOARD_MODE === "live") {
       try {

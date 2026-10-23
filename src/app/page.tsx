@@ -16,6 +16,7 @@ import {
   MousePointerClick,
   CheckCircle2,
   ShieldCheck,
+  Search,
 } from "lucide-react";
 import Avatar from "@/components/board/Avatar";
 import CheckoutPanel from "@/components/board/CheckoutPanel";
@@ -39,6 +40,7 @@ import { formatUsd } from "@/lib/board/format";
 import { checkListingUrl, deriveBrandName, type ListingErrors, type ListingFields as Fields } from "@/lib/board/listing";
 import type {
   ActivityItem,
+  BoardDigest,
   BoardRow,
   BoardSnapshot,
   HallOfFame,
@@ -111,6 +113,45 @@ export default function BoardPage() {
   // Fast-Add Bar State
   const [fastUrl, setFastUrl] = useState("");
   const [fastError, setFastError] = useState<string | null>(null);
+
+  // Search & Filter State
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Deep-Link Highlighting State
+  const [highlightedDomain] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const checkout = params.get("checkout");
+      const domain = params.get("domain");
+      const hl = params.get("highlight") || (checkout !== "success" ? domain : null);
+      if (hl) {
+        return hl.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0];
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  });
+
+  // Daily Digest Modal State
+  const [digestOpen, setDigestOpen] = useState(false);
+  const [digestData, setDigestData] = useState<BoardDigest | null>(null);
+  const [digestLoading, setDigestLoading] = useState(false);
+  const [digestCopied, setDigestCopied] = useState(false);
+
+  const openDailyDigest = async () => {
+    setDigestOpen(true);
+    setDigestLoading(true);
+    try {
+      const data = await api.getDigest(season);
+      setDigestData(data);
+    } catch (err) {
+      console.error("Failed to load digest:", err);
+    } finally {
+      setDigestLoading(false);
+    }
+  };
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 60000);
@@ -215,6 +256,18 @@ export default function BoardPage() {
     }
   }, []);
 
+  // Smooth scroll to highlighted listing
+  useEffect(() => {
+    if (!highlightedDomain || !snapshot || snapshot.rows.length === 0) return;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`listing-row-${highlightedDomain}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [highlightedDomain, snapshot]);
+
   // Share card modal state
   const [shareTarget, setShareTarget] = useState<{
     listing: Listing;
@@ -282,6 +335,18 @@ export default function BoardPage() {
       costToClimbCents: null,
     };
   }, [bidOpen, snapshot, targetDomain, bidAmountCents, isNew]);
+
+  const filteredRows = useMemo(() => {
+    if (!snapshot) return [];
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return snapshot.rows;
+    return snapshot.rows.filter(
+      (r) =>
+        r.listing.name.toLowerCase().includes(q) ||
+        r.listing.domain.toLowerCase().includes(q) ||
+        (r.listing.tagline && r.listing.tagline.toLowerCase().includes(q))
+    );
+  }, [snapshot, searchQuery]);
 
   const quote = serverQuote?.ok && serverQuote.amountCents === bidAmountCents ? serverQuote : localQuote;
 
@@ -628,6 +693,40 @@ export default function BoardPage() {
             </div>
           )}
 
+          {/* Search Bar & Daily Digest Bar */}
+          <div className="mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search brands or domains..."
+                className="w-full rounded-xl border border-line bg-surface/80 pl-10 pr-10 py-2.5 text-xs sm:text-sm font-medium text-fg placeholder:text-muted focus:border-accent focus:outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted hover:text-fg"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={openDailyDigest}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 py-2 text-xs font-semibold text-muted hover:border-line-strong hover:text-fg transition-colors whitespace-nowrap"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-accent" />
+                <span>Daily Digest</span>
+              </button>
+            </div>
+          </div>
+
           {loading ? (
             <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-line bg-surface/30">
               <p className="text-sm text-muted">Loading live leaderboard...</p>
@@ -643,16 +742,53 @@ export default function BoardPage() {
                 Claim #1 Now ({formatUsd(RULES.minBidCents)})
               </Button>
             </div>
+          ) : filteredRows.length === 0 && searchQuery.trim() !== "" ? (
+            <div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-accent/40 bg-accent/5 p-6 text-center">
+              <p className="text-base font-bold text-fg">
+                No brand listed for &quot;{searchQuery}&quot; yet
+              </p>
+              <p className="mt-1 text-xs text-muted max-w-md">
+                Be the first to claim this placement and take the #1 rank today.
+              </p>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setFastUrl(searchQuery);
+                  const brand = deriveBrandName(searchQuery);
+                  setIsNew(true);
+                  setTargetDomain(null);
+                  setListingForm({
+                    url: searchQuery.startsWith("http") ? searchQuery : `https://${searchQuery}`,
+                    name: brand,
+                    tagline: "",
+                    category: category ?? "Marketing",
+                  });
+                  setFormErrors({});
+                  const minLead = snapshot ? snapshot.leadCostCents : RULES.minBidCents;
+                  setBidAmountCents(Math.max(minLead, 1000));
+                  setCustomAmountStr("");
+                  setBidOpen(true);
+                }}
+                className="mt-4 text-xs font-bold"
+              >
+                Claim Rank #1 with {searchQuery}
+              </Button>
+            </div>
           ) : (
             <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
               <div className="divide-y divide-line">
-                {snapshot.rows.map((row) => {
+                {filteredRows.map((row) => {
                   const isTop1 = row.rank === 1;
+                  const isHighlighted = highlightedDomain === row.listing.domain;
                   return (
                     <div
+                      id={`listing-row-${row.listing.domain}`}
                       key={row.listing.domain}
-                      className={`flex flex-col gap-4 p-4 transition-colors sm:flex-row sm:items-center sm:justify-between sm:p-5 ${
-                        isTop1
+                      className={`flex flex-col gap-4 p-4 transition-all sm:flex-row sm:items-center sm:justify-between sm:p-5 ${
+                        isHighlighted
+                          ? "ring-2 ring-accent shadow-lg shadow-accent/25 bg-accent/10"
+                          : isTop1
                           ? "bg-gradient-to-r from-accent/5 via-transparent to-transparent"
                           : "hover:bg-raised/40"
                       }`}
@@ -694,21 +830,26 @@ export default function BoardPage() {
                               <span className="truncate">{row.listing.name}</span>
                               <ArrowUpRight className="h-3.5 w-3.5 text-muted transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-accent" />
                             </a>
+                            {isHighlighted && (
+                              <span className="rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-bold text-accent-ink">
+                                Linked Brand
+                              </span>
+                            )}
                             {row.listing.verified ? (
                               <span title="Verified domain owner" className="inline-flex items-center">
                                 <CheckCircle2 className="h-4 w-4 text-ok" />
                               </span>
-                            ) : myListings.some((m) => m.listing.domain === row.listing.domain) ? (
+                            ) : (
                               <button
                                 type="button"
                                 onClick={() => setVerifyDomain(row.listing.domain)}
-                                className="inline-flex items-center gap-1 rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold text-accent hover:bg-accent/20"
-                                title="Click to verify ownership of your domain"
+                                className="inline-flex items-center gap-1 rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold text-accent hover:bg-accent/20 transition-colors"
+                                title="Click to verify ownership of this domain"
                               >
                                 <ShieldCheck className="h-3 w-3" />
                                 Verify
                               </button>
-                            ) : null}
+                            )}
                             <span className="rounded-md bg-raised px-2 py-0.5 text-[11px] font-medium text-muted">
                               {row.listing.category}
                             </span>
@@ -1065,7 +1206,7 @@ export default function BoardPage() {
                   big={`#${successItem.rank}`}
                   title={successItem.listing.name}
                   subtitle={successItem.listing.tagline}
-                  shareUrl={`https://adverticeaf.com/board`}
+                  shareUrl={`https://adverticeaf.com/?highlight=${encodeURIComponent(successItem.listing.domain)}`}
                   shareText={`We just claimed #${successItem.rank} on the @adverticeaf Board! Check out our placement:`}
                 />
               </div>
@@ -1078,7 +1219,7 @@ export default function BoardPage() {
                 <div className="mt-3">
                   <BadgeEmbed
                     label={`Ranked #${successItem.rank} on AdverticeAF`}
-                    href="https://adverticeaf.com/board"
+                    href={`https://adverticeaf.com/?highlight=${encodeURIComponent(successItem.listing.domain)}`}
                   />
                 </div>
               </div>
@@ -1134,17 +1275,62 @@ export default function BoardPage() {
               big={`#${shareTarget.rank}`}
               title={shareTarget.listing.name}
               subtitle={shareTarget.listing.tagline}
-              shareUrl="https://adverticeaf.com/board"
+              shareUrl={`https://adverticeaf.com/?highlight=${encodeURIComponent(shareTarget.listing.domain)}`}
               shareText={`Check out ${shareTarget.listing.name} ranked #${shareTarget.rank} on the AdverticeAF Board:`}
             />
             <div className="border-t border-line pt-4">
               <BadgeEmbed
                 label={`Ranked #${shareTarget.rank} on AdverticeAF`}
-                href="https://adverticeaf.com/board"
+                href={`https://adverticeaf.com/?highlight=${encodeURIComponent(shareTarget.listing.domain)}`}
               />
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Daily Digest Modal */}
+      <Modal
+        open={digestOpen}
+        onClose={() => setDigestOpen(false)}
+        title="Live Leaderboard Digest"
+        description="Shareable executive rollup of the live leaderboard for newsletters and social media."
+        maxWidth="max-w-xl"
+      >
+        <div className="space-y-4">
+          {digestLoading ? (
+            <div className="py-8 text-center text-sm text-muted">Generating live digest...</div>
+          ) : digestData ? (
+            <>
+              <div className="rounded-xl border border-line bg-raised/60 p-3.5">
+                <div className="flex items-center justify-between text-xs text-muted pb-2 border-b border-line/60">
+                  <span className="font-bold uppercase tracking-wider text-accent">Summary Text</span>
+                  <span>{new Date(digestData.generatedAt).toLocaleDateString()}</span>
+                </div>
+                <pre className="mt-3 whitespace-pre-wrap font-mono text-xs text-fg leading-relaxed bg-surface/80 p-3 rounded-lg border border-line overflow-x-auto max-h-64">
+                  {digestData.plainText}
+                </pre>
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-xs text-muted">
+                  {digestCopied ? "Copied to clipboard!" : "Ready to paste into X or newsletter"}
+                </span>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(digestData.plainText);
+                    setDigestCopied(true);
+                    setTimeout(() => setDigestCopied(false), 2500);
+                  }}
+                  className="text-xs font-bold"
+                >
+                  {digestCopied ? "Copied!" : "Copy Digest Text"}
+                </Button>
+              </div>
+            </>
+          ) : null}
+        </div>
       </Modal>
 
       {/* Domain Verification Modal */}

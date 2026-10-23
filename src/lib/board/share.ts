@@ -297,6 +297,7 @@ export interface BadgeSnippets {
   html: string;
   markdown: string;
   link: string;
+  iframe: string;
 }
 
 /** Ready-to-paste badge snippets, or null when `href` is not a valid http(s) URL. */
@@ -309,6 +310,7 @@ export function buildBadgeSnippets(label: string, href: string): BadgeSnippets |
     html: `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="${escapeHtml(badgeCss())}">${escapeHtml(text)}</a>`,
     markdown: `[${escapeMarkdown(text)}](${mdUrl})`,
     link: url,
+    iframe: `<iframe src="https://adverticeaf.com/embed" width="100%" height="280" frameborder="0" style="border:none;border-radius:12px;overflow:hidden;"></iframe>`,
   };
 }
 

@@ -9,7 +9,7 @@ import { BOARD_API_BASE, BOARD_CATEGORIES, SEASONS, type BoardCategory, type Sea
 import { boardStats } from "./rules";
 import { checkListingUrl } from "./listing";
 import type {
-  ActivityItem, Bid, BidResult, BoardAdapter, BoardRow, BoardSnapshot, HallOfFame, HallOfFameEntry, Listing,
+  ActivityItem, Bid, BidResult, BoardAdapter, BoardDigest, BoardRow, BoardSnapshot, HallOfFame, HallOfFameEntry, Listing,
   ListingDetail, OkOrError, Quote, RankPoint, VerificationCheck, VerificationInfo,
 } from "./types";
 
@@ -348,6 +348,11 @@ export const httpAdapter: BoardAdapter = {
 
   async getActivity(limit) {
     return parseActivity(await call(`/v1/activity${q({ limit: String(Math.max(1, Math.min(50, Math.floor(limit)))) })}`));
+  },
+
+  async getDigest(season = "all"): Promise<BoardDigest> {
+    const raw = await call(`/v1/digest${q({ season })}`);
+    return raw as BoardDigest;
   },
 
   async getVerification(domain) {

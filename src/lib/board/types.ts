@@ -167,6 +167,29 @@ export interface VerificationCheck {
   simulated?: boolean;
 }
 
+export interface BoardDigest {
+  ok: boolean;
+  season: SeasonId;
+  generatedAt: number;
+  topKing: {
+    domain: string;
+    name: string;
+    totalCents: number;
+    category: string;
+  } | null;
+  leaders: Array<{
+    rank: number;
+    domain: string;
+    name: string;
+    totalCents: number;
+    clicks: number;
+  }>;
+  stats: { listings: number; totalCents: number; clicks: number };
+  leadCostCents: number;
+  plainText: string;
+  markdown: string;
+}
+
 /** The interface every adapter (demo, live HTTP) implements. */
 export interface BoardAdapter {
   getBoard(season: SeasonId, category: BoardCategory | null): Promise<BoardSnapshot>;
@@ -178,6 +201,7 @@ export interface BoardAdapter {
   recordClick(domain: string): Promise<void>;
   getHallOfFame(): Promise<HallOfFame>;
   getActivity(limit: number): Promise<ActivityItem[]>;
+  getDigest(season?: SeasonId): Promise<BoardDigest>;
   getVerification(domain: string): Promise<VerificationInfo>;
   checkVerification(domain: string): Promise<VerificationCheck>;
   reportListing(domain: string, reason: string): Promise<OkOrError>;
