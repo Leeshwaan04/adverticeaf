@@ -355,6 +355,16 @@ export const httpAdapter: BoardAdapter = {
     return raw as BoardDigest;
   },
 
+  async generateAiTagline(urlOrDomain: string) {
+    const raw = await call("/v1/ai/tagline", { method: "POST", body: { url: urlOrDomain } });
+    return raw as { ok: boolean; name: string; tagline: string; category: BoardCategory; modelUsed: string };
+  },
+
+  async getAiMarketDigest(season = "all") {
+    const raw = await call(`/v1/ai/digest${q({ season })}`);
+    return raw as { ok: boolean; narrative: string; modelUsed: string; generatedAt: number };
+  },
+
   async getVerification(domain) {
     const parsed = parseVerification(await call(`/v1/verification${q({ domain })}`));
     if (!parsed) throw new Error(BAD_RESPONSE);

@@ -1,6 +1,6 @@
 "use client";
 
-import { BOARD_MODE } from "./config";
+import { BOARD_MODE, type SeasonId } from "./config";
 import { demoAdapter } from "./demo";
 import { httpAdapter } from "./http";
 import { checkListingUrl } from "./listing";
@@ -128,6 +128,28 @@ export const api: BoardApi = {
       }
     }
     return demoAdapter.getDigest(season);
+  },
+
+  async generateAiTagline(urlOrDomain: string) {
+    if (BOARD_MODE === "live") {
+      try {
+        return await httpAdapter.generateAiTagline(urlOrDomain);
+      } catch {
+        // Fall back
+      }
+    }
+    return demoAdapter.generateAiTagline(urlOrDomain);
+  },
+
+  async getAiMarketDigest(season?: SeasonId) {
+    if (BOARD_MODE === "live") {
+      try {
+        return await httpAdapter.getAiMarketDigest(season);
+      } catch {
+        // Fall back
+      }
+    }
+    return demoAdapter.getAiMarketDigest(season);
   },
 
   async getVerification(domain) {

@@ -265,6 +265,35 @@ export const demoAdapter: BoardAdapter = {
     };
   },
 
+  async generateAiTagline(urlOrDomain: string) {
+    await delay(150);
+    const host = hostOf(urlOrDomain);
+    const base = host.split(".")[0];
+    const name = base ? base.charAt(0).toUpperCase() + base.slice(1) : "Your Brand";
+    return {
+      ok: true,
+      name,
+      tagline: `${name} official digital platform`,
+      category: "Marketing" as BoardCategory,
+      modelUsed: "nvidia/nemotron-mini-4b-instruct",
+    };
+  },
+
+  async getAiMarketDigest(season = "all") {
+    await delay(200);
+    const s = current();
+    const rows = rankListings(s.listings, s.bids, s.clicks, seasonWindow(season, Date.now()), null, Date.now());
+    const top = rows[0];
+    return {
+      ok: true,
+      narrative: top
+        ? `NVIDIA Nemotron Market Commentary: ${top.listing.name} holds strong dominance at rank #1 with active bidding pressure from challenger brands across tech and developer categories.`
+        : "NVIDIA Nemotron Market Commentary: Attention market is open with zero competitive pressure. Claim rank #1 now to secure immediate crown placement.",
+      modelUsed: "nvidia/llama-3.1-nemotron-70b-instruct",
+      generatedAt: Date.now(),
+    };
+  },
+
   async getVerification(domain): Promise<VerificationInfo> {
     await delay(100);
     const s = current();

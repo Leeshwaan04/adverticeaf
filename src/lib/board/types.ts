@@ -202,6 +202,8 @@ export interface BoardAdapter {
   getHallOfFame(): Promise<HallOfFame>;
   getActivity(limit: number): Promise<ActivityItem[]>;
   getDigest(season?: SeasonId): Promise<BoardDigest>;
+  generateAiTagline(urlOrDomain: string): Promise<{ ok: boolean; name: string; tagline: string; category: BoardCategory; modelUsed: string }>;
+  getAiMarketDigest(season?: SeasonId): Promise<{ ok: boolean; narrative: string; modelUsed: string; generatedAt: number }>;
   getVerification(domain: string): Promise<VerificationInfo>;
   checkVerification(domain: string): Promise<VerificationCheck>;
   reportListing(domain: string, reason: string): Promise<OkOrError>;

@@ -478,4 +478,55 @@ describe("E2E Sanity Testing — All User Scenarios, Flows & Journeys", () => {
       expect(/[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(digest.markdown)).toBe(false);
     });
   });
+
+  describe("Journey 10: NVIDIA Models Suite (Nemotron & Llama Guard)", () => {
+    it("generates brand taglines and categorizes domains using NVIDIA Nemotron", async () => {
+      const res = await handleBoardRequest(
+        new Request("https://adverticeaf.com/v1/ai/tagline", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: "https://stripe.com" }),
+        }),
+      );
+      expect(res.status).toBe(200);
+      const data = (await res.json()) as { ok: boolean; name: string; tagline: string; category: string; modelUsed: string };
+      expect(data.ok).toBe(true);
+      expect(data.name).toBe("Stripe");
+      expect(data.tagline.length).toBeGreaterThan(0);
+      expect(data.category).toBeDefined();
+      expect(data.modelUsed).toContain("nemotron");
+    });
+
+    it("generates executive market commentary using NVIDIA Nemotron 70B", async () => {
+      const res = await handleBoardRequest(
+        new Request("https://adverticeaf.com/v1/ai/digest?season=all", { method: "GET" }),
+      );
+      expect(res.status).toBe(200);
+      const data = (await res.json()) as { ok: boolean; narrative: string; modelUsed: string };
+      expect(data.ok).toBe(true);
+      expect(data.narrative.length).toBeGreaterThan(0);
+      expect(data.modelUsed).toContain("nemotron-70b");
+      // Zero emojis
+      expect(/[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(data.narrative)).toBe(false);
+    });
+
+    it("moderates listing content using NVIDIA Llama Guard", async () => {
+      const res = await handleBoardRequest(
+        new Request("https://adverticeaf.com/v1/ai/moderate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: "https://mybrand.com",
+            name: "My Brand",
+            tagline: "Software and analytics",
+          }),
+        }),
+      );
+      expect(res.status).toBe(200);
+      const data = (await res.json()) as { ok: boolean; safe: boolean; modelUsed: string };
+      expect(data.ok).toBe(true);
+      expect(data.safe).toBe(true);
+      expect(data.modelUsed).toContain("llama-guard");
+    });
+  });
 });

@@ -4,6 +4,11 @@ import type { ActivityItem, Bid, BoardSnapshot, HallOfFame, Listing } from "../s
 import { formatUsd } from "../src/lib/board/format.ts";
 import { checkListingUrl } from "../src/lib/board/listing.ts";
 import { verifyWebhook } from "./payments.ts";
+import {
+  generateBrandDetailsWithNemotron,
+  generateMarketIntelligenceWithNemotron,
+  moderateListingWithNvidiaGuard,
+} from "./nvidia.ts";
 
 export interface BoardEnv {
   PROMOTIONS_DB?: {
@@ -25,6 +30,9 @@ export interface BoardEnv {
   PAYMENTS_SITE_URL?: string;
   RESEND_API_KEY?: string;
   ALERT_WEBHOOK_URL?: string;
+  NVIDIA_API_KEY?: string;
+  NVIDIA_API_BASE?: string;
+  NVIDIA_DEFAULT_MODEL?: string;
 }
 
 const DEFAULT_DODO_KEY = "Tdh6Zyiipg1A76MP.qcji7BYmwcKJf75sjhQOR3r3V6SQKB2pVTGYCs9y3GJmBF-w";
@@ -576,6 +584,50 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
       plainText,
       markdown,
     });
+  }
+
+  // POST /v1/ai/tagline (NVIDIA Nemotron Brand Tagline & Category Generator)
+  if (path === "/ai/tagline" && request.method === "POST") {
+    const body = await request.json().catch(() => ({})) as { url?: string; domain?: string };
+    const target = body.url?.trim() || body.domain?.trim() || "";
+    if (!target) {
+      return json({ ok: false, error: "Please provide a website URL or domain." }, 400);
+    }
+    const result = await generateBrandDetailsWithNemotron(target, env);
+    return json({ ok: true, ...result });
+  }
+
+  // GET /v1/ai/digest (NVIDIA Nemotron 70B Market Intelligence Narrative)
+  if (path === "/ai/digest" && request.method === "GET") {
+    const rawSeason = url.searchParams.get("season") || "all";
+    const season: SeasonId = ["daily", "weekly", "monthly", "all"].includes(rawSeason)
+      ? (rawSeason as SeasonId)
+      : "all";
+    const window = seasonWindow(season, now);
+    const rows = rankListings(globalListings, globalBids, globalClicks, window, null, now);
+    const leadCostCents = costToLead(rows);
+    const stats = boardStats(rows);
+
+    const snapshot: BoardSnapshot = {
+      season,
+      window,
+      category: null,
+      rows,
+      stats,
+      leadCostCents,
+      generatedAt: now,
+      mode: "live",
+    };
+
+    const intelligence = await generateMarketIntelligenceWithNemotron(snapshot, env);
+    return json({ ok: true, season, ...intelligence });
+  }
+
+  // POST /v1/ai/moderate (NVIDIA Llama Guard / Nemotron Content Safety)
+  if (path === "/ai/moderate" && request.method === "POST") {
+    const body = await request.json().catch(() => ({})) as { url?: string; name?: string; tagline?: string };
+    const result = await moderateListingWithNvidiaGuard(body.url || "", body.name || "", body.tagline || "", env);
+    return json({ ok: true, ...result });
   }
 
   // POST /v1/quote

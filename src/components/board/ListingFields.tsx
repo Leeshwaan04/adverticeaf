@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { SelectField, TextField } from "@/components/ui/Field";
 import { BOARD_CATEGORIES, RULES } from "@/lib/board/config";
 import { checkListingUrl, deriveBrandName, type ListingErrors, type ListingFields as Fields } from "@/lib/board/listing";
+import { api } from "@/lib/board/api";
 
 interface Props {
   values: Fields;
@@ -27,6 +28,7 @@ export default function ListingFields({
   taglineMax = RULES.taglineMax,
 }: Props) {
   const [showAdvanced, setShowAdvanced] = useState(() => Boolean(values.tagline || (values.category && values.category !== "Marketing")));
+  const [aiLoading, setAiLoading] = useState(false);
   const check = values.url.trim() ? checkListingUrl(values.url) : null;
 
   const handleUrlChange = (newUrl: string) => {
@@ -37,6 +39,24 @@ export default function ListingFields({
       if (derived && derived !== "Your Brand") {
         onChange("name", derived);
       }
+    }
+  };
+
+  const handleAiAutoFill = async () => {
+    if (!values.url.trim()) return;
+    setAiLoading(true);
+    setShowAdvanced(true);
+    try {
+      const res = await api.generateAiTagline(values.url);
+      if (res && res.tagline) {
+        onChange("tagline", res.tagline);
+        if (res.category) onChange("category", res.category);
+        if (!values.name.trim() && res.name) onChange("name", res.name);
+      }
+    } catch (err) {
+      console.error("AI tagline generation error:", err);
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -55,6 +75,21 @@ export default function ListingFields({
           onChange={(e) => handleUrlChange(e.target.value)}
         />
       )}
+
+      {!lockUrl && values.url.trim() && (
+        <div className="flex items-center justify-end -mt-2">
+          <button
+            type="button"
+            onClick={handleAiAutoFill}
+            disabled={aiLoading}
+            className="inline-flex items-center gap-1.5 text-[11px] font-bold text-accent hover:underline disabled:opacity-50"
+          >
+            <Sparkles className="h-3 w-3 text-accent" />
+            <span>{aiLoading ? "Generating with Nemotron..." : "Auto-Fill with NVIDIA Nemotron"}</span>
+          </button>
+        </div>
+      )}
+
       <TextField
         label="Brand Name"
         name="name"

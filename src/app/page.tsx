@@ -139,13 +139,18 @@ export default function BoardPage() {
   const [digestData, setDigestData] = useState<BoardDigest | null>(null);
   const [digestLoading, setDigestLoading] = useState(false);
   const [digestCopied, setDigestCopied] = useState(false);
+  const [aiCommentary, setAiCommentary] = useState<{ narrative: string; modelUsed: string } | null>(null);
 
   const openDailyDigest = async () => {
     setDigestOpen(true);
     setDigestLoading(true);
     try {
-      const data = await api.getDigest(season);
+      const [data, ai] = await Promise.all([
+        api.getDigest(season),
+        api.getAiMarketDigest(season).catch(() => null),
+      ]);
       setDigestData(data);
+      if (ai && ai.ok) setAiCommentary(ai);
     } catch (err) {
       console.error("Failed to load digest:", err);
     } finally {
@@ -1306,10 +1311,22 @@ export default function BoardPage() {
                   <span className="font-bold uppercase tracking-wider text-accent">Summary Text</span>
                   <span>{new Date(digestData.generatedAt).toLocaleDateString()}</span>
                 </div>
-                <pre className="mt-3 whitespace-pre-wrap font-mono text-xs text-fg leading-relaxed bg-surface/80 p-3 rounded-lg border border-line overflow-x-auto max-h-64">
+                <pre className="mt-3 whitespace-pre-wrap font-mono text-xs text-fg leading-relaxed bg-surface/80 p-3 rounded-lg border border-line overflow-x-auto max-h-48">
                   {digestData.plainText}
                 </pre>
               </div>
+
+              {aiCommentary && (
+                <div className="rounded-xl border border-accent/30 bg-accent/5 p-3.5">
+                  <div className="flex items-center justify-between text-xs text-muted pb-1.5 border-b border-accent/20">
+                    <span className="font-bold text-accent">NVIDIA Nemotron Market Commentary</span>
+                    <span className="text-[10px] text-muted">{aiCommentary.modelUsed}</span>
+                  </div>
+                  <p className="mt-2 text-xs leading-relaxed text-fg">
+                    {aiCommentary.narrative}
+                  </p>
+                </div>
+              )}
 
               <div className="flex items-center justify-between pt-2">
                 <span className="text-xs text-muted">
@@ -1319,7 +1336,10 @@ export default function BoardPage() {
                   variant="primary"
                   size="sm"
                   onClick={async () => {
-                    await navigator.clipboard.writeText(digestData.plainText);
+                    const textToCopy = aiCommentary
+                      ? `${digestData.plainText}\n\nNVIDIA Nemotron Commentary:\n${aiCommentary.narrative}`
+                      : digestData.plainText;
+                    await navigator.clipboard.writeText(textToCopy);
                     setDigestCopied(true);
                     setTimeout(() => setDigestCopied(false), 2500);
                   }}
