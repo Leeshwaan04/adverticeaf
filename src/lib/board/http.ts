@@ -365,6 +365,19 @@ export const httpAdapter: BoardAdapter = {
     return raw as { ok: boolean; narrative: string; modelUsed: string; generatedAt: number };
   },
 
+  async getAiBattleQuote(challenger: string, incumbent: string, amountCents: number) {
+    const raw = await call("/v1/ai/battle", {
+      method: "POST",
+      body: { challenger, incumbent, amountCents },
+    });
+    return raw as { ok: boolean; quote: string; modelUsed: string };
+  },
+
+  async getAiSectorReport() {
+    const raw = await call("/v1/ai/sectors");
+    return raw as { ok: boolean; report: string; topSector: string; modelUsed: string };
+  },
+
   async getVerification(domain) {
     const parsed = parseVerification(await call(`/v1/verification${q({ domain })}`));
     if (!parsed) throw new Error(BAD_RESPONSE);

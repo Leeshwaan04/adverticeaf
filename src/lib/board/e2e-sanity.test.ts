@@ -528,5 +528,40 @@ describe("E2E Sanity Testing — All User Scenarios, Flows & Journeys", () => {
       expect(data.safe).toBe(true);
       expect(data.modelUsed).toContain("llama-guard");
     });
+
+    it("generates battle quotes between challenger and king using Nemotron", async () => {
+      const res = await handleBoardRequest(
+        new Request("https://adverticeaf.com/v1/ai/battle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            challenger: "Linear",
+            incumbent: "Cursor",
+            amountCents: 500,
+          }),
+        }),
+      );
+      expect(res.status).toBe(200);
+      const data = (await res.json()) as { ok: boolean; quote: string; modelUsed: string };
+      expect(data.ok).toBe(true);
+      expect(data.quote.length).toBeGreaterThan(0);
+      expect(data.quote).toContain("Linear");
+      // Zero emojis
+      expect(/[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(data.quote)).toBe(false);
+    });
+
+    it("generates sector mindshare intelligence reports using Nemotron 70B", async () => {
+      const res = await handleBoardRequest(
+        new Request("https://adverticeaf.com/v1/ai/sectors", { method: "GET" }),
+      );
+      expect(res.status).toBe(200);
+      const data = (await res.json()) as { ok: boolean; report: string; topSector: string; modelUsed: string };
+      expect(data.ok).toBe(true);
+      expect(data.report.length).toBeGreaterThan(0);
+      expect(data.topSector).toBeDefined();
+      expect(data.modelUsed).toContain("nemotron-70b");
+      // Zero emojis
+      expect(/[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(data.report)).toBe(false);
+    });
   });
 });

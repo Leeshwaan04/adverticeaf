@@ -140,17 +140,20 @@ export default function BoardPage() {
   const [digestLoading, setDigestLoading] = useState(false);
   const [digestCopied, setDigestCopied] = useState(false);
   const [aiCommentary, setAiCommentary] = useState<{ narrative: string; modelUsed: string } | null>(null);
+  const [sectorReport, setSectorReport] = useState<{ report: string; topSector: string; modelUsed: string } | null>(null);
 
   const openDailyDigest = async () => {
     setDigestOpen(true);
     setDigestLoading(true);
     try {
-      const [data, ai] = await Promise.all([
+      const [data, ai, sec] = await Promise.all([
         api.getDigest(season),
         api.getAiMarketDigest(season).catch(() => null),
+        api.getAiSectorReport().catch(() => null),
       ]);
       setDigestData(data);
       if (ai && ai.ok) setAiCommentary(ai);
+      if (sec && sec.ok) setSectorReport(sec);
     } catch (err) {
       console.error("Failed to load digest:", err);
     } finally {
@@ -1328,6 +1331,18 @@ export default function BoardPage() {
                 </div>
               )}
 
+              {sectorReport && (
+                <div className="rounded-xl border border-line bg-surface/70 p-3.5">
+                  <div className="flex items-center justify-between text-xs text-muted pb-1.5 border-b border-line/60">
+                    <span className="font-bold text-fg">Sector Mindshare Analysis</span>
+                    <span className="text-[10px] text-accent font-semibold">Leading: {sectorReport.topSector}</span>
+                  </div>
+                  <p className="mt-2 text-xs leading-relaxed text-muted">
+                    {sectorReport.report}
+                  </p>
+                </div>
+              )}
+
               <div className="flex items-center justify-between pt-2">
                 <span className="text-xs text-muted">
                   {digestCopied ? "Copied to clipboard!" : "Ready to paste into X or newsletter"}
@@ -1336,9 +1351,13 @@ export default function BoardPage() {
                   variant="primary"
                   size="sm"
                   onClick={async () => {
-                    const textToCopy = aiCommentary
-                      ? `${digestData.plainText}\n\nNVIDIA Nemotron Commentary:\n${aiCommentary.narrative}`
-                      : digestData.plainText;
+                    let textToCopy = digestData.plainText;
+                    if (aiCommentary) {
+                      textToCopy += `\n\nNVIDIA Nemotron Commentary:\n${aiCommentary.narrative}`;
+                    }
+                    if (sectorReport) {
+                      textToCopy += `\n\nSector Mindshare Breakdown:\n${sectorReport.report}`;
+                    }
                     await navigator.clipboard.writeText(textToCopy);
                     setDigestCopied(true);
                     setTimeout(() => setDigestCopied(false), 2500);

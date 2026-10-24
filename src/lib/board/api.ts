@@ -152,6 +152,28 @@ export const api: BoardApi = {
     return demoAdapter.getAiMarketDigest(season);
   },
 
+  async getAiBattleQuote(challenger: string, incumbent: string, amountCents: number) {
+    if (BOARD_MODE === "live") {
+      try {
+        return await httpAdapter.getAiBattleQuote(challenger, incumbent, amountCents);
+      } catch {
+        // Fall back
+      }
+    }
+    return demoAdapter.getAiBattleQuote(challenger, incumbent, amountCents);
+  },
+
+  async getAiSectorReport() {
+    if (BOARD_MODE === "live") {
+      try {
+        return await httpAdapter.getAiSectorReport();
+      } catch {
+        // Fall back
+      }
+    }
+    return demoAdapter.getAiSectorReport();
+  },
+
   async getVerification(domain) {
     if (BOARD_MODE === "live") {
       try {

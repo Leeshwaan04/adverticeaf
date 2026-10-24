@@ -294,6 +294,25 @@ export const demoAdapter: BoardAdapter = {
     };
   },
 
+  async getAiBattleQuote(challenger: string, incumbent: string, amountCents: number) {
+    await delay(150);
+    return {
+      ok: true,
+      quote: `${challenger} enters the arena with $${(amountCents / 100).toFixed(0)} to challenge ${incumbent} for #1.`,
+      modelUsed: "nvidia/nemotron-mini-4b-instruct",
+    };
+  },
+
+  async getAiSectorReport() {
+    await delay(200);
+    return {
+      ok: true,
+      report: "Sector Mindshare Report: Marketing and Developer Tools lead digital attention acquisition with aggressive counter-bidding across prime positions.",
+      topSector: "Marketing",
+      modelUsed: "nvidia/llama-3.1-nemotron-70b-instruct",
+    };
+  },
+
   async getVerification(domain): Promise<VerificationInfo> {
     await delay(100);
     const s = current();

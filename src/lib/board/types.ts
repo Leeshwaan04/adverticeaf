@@ -204,6 +204,8 @@ export interface BoardAdapter {
   getDigest(season?: SeasonId): Promise<BoardDigest>;
   generateAiTagline(urlOrDomain: string): Promise<{ ok: boolean; name: string; tagline: string; category: BoardCategory; modelUsed: string }>;
   getAiMarketDigest(season?: SeasonId): Promise<{ ok: boolean; narrative: string; modelUsed: string; generatedAt: number }>;
+  getAiBattleQuote(challenger: string, incumbent: string, amountCents: number): Promise<{ ok: boolean; quote: string; modelUsed: string }>;
+  getAiSectorReport(): Promise<{ ok: boolean; report: string; topSector: string; modelUsed: string }>;
   getVerification(domain: string): Promise<VerificationInfo>;
   checkVerification(domain: string): Promise<VerificationCheck>;
   reportListing(domain: string, reason: string): Promise<OkOrError>;

@@ -8,6 +8,9 @@ import {
   generateBrandDetailsWithNemotron,
   generateMarketIntelligenceWithNemotron,
   moderateListingWithNvidiaGuard,
+  generateBattleQuoteWithNemotron,
+  generateOutbidUrgencyHook,
+  generateSectorMindshareReport,
 } from "./nvidia.ts";
 
 export interface BoardEnv {
@@ -323,7 +326,8 @@ async function notifyOutbid(
   overtakenDomains: string[],
   bidderDomain: string,
   bidderName: string,
-  now: number
+  now: number,
+  bidAmountCents = 100
 ) {
   for (const domain of overtakenDomains) {
     const emails = new Set<string>();
@@ -346,6 +350,14 @@ async function notifyOutbid(
     console.log(`[Outbid Alert] ${domain} overtaken by ${bidderName} (${bidderDomain}). Alerting: ${Array.from(emails).join(", ")}`);
 
     if (env?.RESEND_API_KEY) {
+      const urgencyHook = await generateOutbidUrgencyHook(
+        domain,
+        bidderName,
+        bidAmountCents,
+        costToLead(rankListings(globalListings, globalBids, globalClicks, seasonWindow("all", now), null, now)),
+        env
+      );
+
       for (const email of emails) {
         try {
           await fetch("https://api.resend.com/emails", {
@@ -369,6 +381,10 @@ async function notifyOutbid(
                   <p style="margin: 0 0 16px; font-size: 14px; line-height: 1.6; color: #94a3b8;">
                     <strong>${bidderName}</strong> (${bidderDomain}) just placed a bid and moved ahead of <strong>${domain}</strong> on the public leaderboard.
                   </p>
+                  <div style="background-color: #0b1524; border-left: 3px solid #22d3ee; padding: 12px 16px; margin: 0 0 20px; border-radius: 0 8px 8px 0; font-size: 13px; line-height: 1.5; color: #cbd5e1;">
+                    <div style="font-size: 10px; font-weight: 700; color: #22d3ee; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">NVIDIA Nemotron Market Intelligence</div>
+                    ${urgencyHook}
+                  </div>
                   <p style="margin: 0 0 24px; font-size: 14px; line-height: 1.6; color: #94a3b8;">
                     Protect your placement and reclaim your traffic in 1 click:
                   </p>
@@ -628,6 +644,42 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
     const body = await request.json().catch(() => ({})) as { url?: string; name?: string; tagline?: string };
     const result = await moderateListingWithNvidiaGuard(body.url || "", body.name || "", body.tagline || "", env);
     return json({ ok: true, ...result });
+  }
+
+  // POST /v1/ai/battle (NVIDIA Nemotron Battle Quote)
+  if (path === "/ai/battle" && request.method === "POST") {
+    const body = await request.json().catch(() => ({})) as {
+      challenger?: string;
+      incumbent?: string;
+      amountCents?: number;
+    };
+    const challenger = body.challenger?.trim() || "Challenger";
+    const incumbent = body.incumbent?.trim() || "The King";
+    const amountCents = typeof body.amountCents === "number" && body.amountCents > 0 ? body.amountCents : 100;
+    const result = await generateBattleQuoteWithNemotron(challenger, incumbent, amountCents, env);
+    return json({ ok: true, ...result });
+  }
+
+  // GET /v1/ai/sectors (NVIDIA Nemotron 70B Sector Mindshare Report)
+  if (path === "/ai/sectors" && request.method === "GET") {
+    const window = seasonWindow("all", now);
+    const rows = rankListings(globalListings, globalBids, globalClicks, window, null, now);
+    const leadCostCents = costToLead(rows);
+    const stats = boardStats(rows);
+
+    const snapshot: BoardSnapshot = {
+      season: "all",
+      window,
+      category: null,
+      rows,
+      stats,
+      leadCostCents,
+      generatedAt: now,
+      mode: "live",
+    };
+
+    const sectorReport = await generateSectorMindshareReport(snapshot, env);
+    return json({ ok: true, ...sectorReport });
   }
 
   // POST /v1/quote
@@ -1004,7 +1056,7 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
     }
 
     if (overtaken.length > 0) {
-      void notifyOutbid(env, overtaken, targetListing.domain, targetListing.name, now);
+      void notifyOutbid(env, overtaken, targetListing.domain, targetListing.name, now, amountCents);
     }
 
     broadcastBoardEvent("bid_placed", { domain: targetListing.domain, amountCents, now });
@@ -1116,7 +1168,7 @@ export async function handleBoardRequest(request: Request, env?: BoardEnv): Prom
           }
 
           if (overtaken.length > 0) {
-            void notifyOutbid(env, overtaken, domain, listing?.name || domain, now);
+            void notifyOutbid(env, overtaken, domain, listing?.name || domain, now, amount);
           }
 
           broadcastBoardEvent("bid_placed", { domain, amountCents: amount, now });

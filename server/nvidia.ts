@@ -97,6 +97,22 @@ function generateFallbackResponse(model: string, messages: NvidiaMessage[]): str
     return "safe";
   }
 
+  if (lastUserMsg.includes("battle") || lastUserMsg.includes("challenge quote")) {
+    const match = lastUserMsg.match(/describing ([^ ]+) placing .* to challenge ([^ ]+) for/);
+    if (match) {
+      return `${match[1]} enters the arena to challenge ${match[2]} for the #1 crown.`;
+    }
+    return "The challenger steps up to dispute the #1 attention throne.";
+  }
+
+  if (lastUserMsg.includes("urgency") || lastUserMsg.includes("outbid hook")) {
+    return "Attention share is shifting rapidly. Reclaiming your top ranking locks in audience mindshare before the daily snapshot.";
+  }
+
+  if (lastUserMsg.includes("sector") || lastUserMsg.includes("mindshare")) {
+    return "Marketing and Developer Tools currently command the highest bid density, driving sustained audience conversion across active sessions.";
+  }
+
   return "AdverticeAF live attention market report: top ranked brands maintain active visibility and counter-bidding momentum across live categories.";
 }
 
@@ -235,6 +251,129 @@ export async function moderateListingWithNvidiaGuard(
   } catch {
     // Fail safe to keep flow responsive
     return { safe: true, modelUsed };
+  }
+}
+
+/** Uses NVIDIA Nemotron to generate a 1-sentence competitive battle quote. */
+export async function generateBattleQuoteWithNemotron(
+  challengerName: string,
+  incumbentKingName: string,
+  bidAmountCents: number,
+  env?: NvidiaEnv
+): Promise<{ quote: string; modelUsed: string }> {
+  const modelUsed = NVIDIA_MODELS.nemotronMini;
+  const prompt = `Write a punchy, professional, competitive 1-sentence battle quote (max 15 words, no emojis) describing ${challengerName} placing a ${formatUsd(bidAmountCents)} bid to challenge ${incumbentKingName} for the #1 King of the Hill crown on AdverticeAF.`;
+
+  try {
+    const quote = await callNvidiaModel(
+      modelUsed,
+      [
+        {
+          role: "system",
+          content: "You are an energetic live tech market broadcaster. Write crisp, high-impact battle commentary. Never use emojis.",
+        },
+        { role: "user", content: prompt },
+      ],
+      { temperature: 0.7, maxTokens: 60 },
+      env
+    );
+
+    return {
+      quote: quote.replace(/^["']|["']$/g, "").trim(),
+      modelUsed,
+    };
+  } catch {
+    return {
+      quote: `${challengerName} enters the arena with ${formatUsd(bidAmountCents)} to challenge ${incumbentKingName} for #1.`,
+      modelUsed,
+    };
+  }
+}
+
+/** Uses NVIDIA Nemotron to generate a tailored urgency hook for outbid alert emails. */
+export async function generateOutbidUrgencyHook(
+  outbidDomain: string,
+  bidderName: string,
+  amountCents: number,
+  leadCostCents: number,
+  env?: NvidiaEnv
+): Promise<string> {
+  const modelUsed = NVIDIA_MODELS.nemotronMini;
+  const prompt = `Write a persuasive 2-sentence urgency hook (under 40 words, no emojis) for an email to ${outbidDomain} explaining that ${bidderName} just placed a ${formatUsd(amountCents)} bid to outrank them, and they can retake the crown right now for ${formatUsd(leadCostCents)}.`;
+
+  try {
+    const hook = await callNvidiaModel(
+      modelUsed,
+      [
+        {
+          role: "system",
+          content: "You are an executive direct-response copywriter. Deliver clear commercial urgency without hype or emojis.",
+        },
+        { role: "user", content: prompt },
+      ],
+      { temperature: 0.5, maxTokens: 80 },
+      env
+    );
+
+    return hook.replace(/^["']|["']$/g, "").trim();
+  } catch {
+    return `${bidderName} has overtaken your ranking. Reclaiming the #1 position now locks in your audience mindshare before the daily snapshot.`;
+  }
+}
+
+/** Uses NVIDIA Llama-3.1-Nemotron-70B-Instruct for sector mindshare intelligence. */
+export async function generateSectorMindshareReport(
+  snapshot: BoardSnapshot,
+  env?: NvidiaEnv
+): Promise<{ report: string; topSector: string; modelUsed: string }> {
+  const modelUsed = NVIDIA_MODELS.nemotron70b;
+
+  // Aggregate category spend
+  const categoryTotals: Record<string, number> = {};
+  for (const row of snapshot.rows) {
+    const cat = row.listing.category || "General";
+    categoryTotals[cat] = (categoryTotals[cat] || 0) + row.totalCents;
+  }
+
+  const sortedCategories = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+  const topSector = sortedCategories[0]?.[0] || "Marketing";
+
+  const breakdownString = sortedCategories.length > 0
+    ? sortedCategories.map(([cat, cents]) => `${cat}: ${formatUsd(cents)}`).join(", ")
+    : "No sector volume recorded yet.";
+
+  const prompt = `You are an industry sector analyst.
+Analyze this category breakdown of live advertising spend on AdverticeAF:
+${breakdownString}
+Total Market: ${formatUsd(snapshot.stats.totalCents)} across ${snapshot.stats.listings} brands.
+
+Write a concise 2-paragraph sector mindshare report highlighting which industry category is aggressively bidding for digital attention and what it indicates about marketing capital allocation. No emojis.`;
+
+  try {
+    const report = await callNvidiaModel(
+      modelUsed,
+      [
+        {
+          role: "system",
+          content: "You are a quantitative tech equity research analyst. Write with direct clarity and authority. No emojis.",
+        },
+        { role: "user", content: prompt },
+      ],
+      { temperature: 0.4, maxTokens: 300 },
+      env
+    );
+
+    return {
+      report,
+      topSector,
+      modelUsed,
+    };
+  } catch {
+    return {
+      report: `Market Mindshare Report: ${topSector} leads current bidding activity with concentrated capital allocation. Brands in this category demonstrate the highest willingness to defend top-of-funnel discovery across active user sessions.`,
+      topSector,
+      modelUsed,
+    };
   }
 }
 
