@@ -174,24 +174,32 @@ Analyze this live leaderboard snapshot:
 
 Write a concise, high-impact 2-paragraph market intelligence update for founders and advertisers. Focus on the battle for the crown, cost of attention, and counter-bidding dynamics. Do not use emojis.`;
 
-  const narrative = await callNvidiaModel(
-    modelUsed,
-    [
-      {
-        role: "system",
-        content: "You are an analytical financial journalist. Write with crisp authority. Do not include emojis.",
-      },
-      { role: "user", content: prompt },
-    ],
-    { temperature: 0.5, maxTokens: 350 },
-    env
-  );
+  try {
+    const narrative = await callNvidiaModel(
+      modelUsed,
+      [
+        {
+          role: "system",
+          content: "You are an analytical financial journalist. Write with crisp authority. Do not include emojis.",
+        },
+        { role: "user", content: prompt },
+      ],
+      { temperature: 0.5, maxTokens: 350 },
+      env
+    );
 
-  return {
-    narrative,
-    modelUsed,
-    generatedAt: Date.now(),
-  };
+    return {
+      narrative,
+      modelUsed,
+      generatedAt: Date.now(),
+    };
+  } catch {
+    return {
+      narrative: `AdverticeAF Market Update: The leaderboard currently tracks ${snapshot.stats.listings} brands with ${formatUsd(snapshot.stats.totalCents)} in accumulated bid volume. Cost to secure the #1 King of the Hill crown sits at ${formatUsd(snapshot.leadCostCents)}. Bidding dynamics continue to reward early, persistent attention captures.`,
+      modelUsed,
+      generatedAt: Date.now(),
+    };
+  }
 }
 
 /** Uses NVIDIA Llama Guard to moderate listing submissions before purchase. */
