@@ -60,6 +60,15 @@ export default function ListingFields({
     }
   };
 
+  const handleUrlBlur = () => {
+    if (values.url.trim() && !values.tagline.trim() && !aiLoading) {
+      const check = checkListingUrl(values.url);
+      if (check.ok) {
+        void handleAiAutoFill();
+      }
+    }
+  };
+
   return (
     <div className="space-y-4">
       {!lockUrl && (
@@ -73,6 +82,7 @@ export default function ListingFields({
           error={errors.url}
           hint={check && check.ok ? `Will link to ${check.url}` : "Enter your website address (e.g. acme.com)"}
           onChange={(e) => handleUrlChange(e.target.value)}
+          onBlur={handleUrlBlur}
         />
       )}
 

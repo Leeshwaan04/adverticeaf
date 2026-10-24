@@ -35,6 +35,17 @@ export default function VerifyModal({ open, onClose, domain, onVerified }: Verif
           setInfo(res);
           setVerified(res.verified);
           setLoading(false);
+
+          // Zero-click auto check: If not verified yet, test DNS immediately in the background
+          if (!res.verified) {
+            api.checkVerification(domain).then((checkRes) => {
+              if (checkRes.verified && !unmounted) {
+                setVerified(true);
+                setStatusMessage(checkRes.message || "Domain ownership verified! Your verified badge is live.");
+                onVerified?.();
+              }
+            }).catch(() => {});
+          }
         }
       })
       .catch((err) => {
@@ -47,7 +58,7 @@ export default function VerifyModal({ open, onClose, domain, onVerified }: Verif
     return () => {
       unmounted = true;
     };
-  }, [open, domain]);
+  }, [open, domain, onVerified]);
 
   const handleCopy = (text: string, id: string) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {

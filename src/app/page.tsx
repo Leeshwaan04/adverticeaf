@@ -17,6 +17,8 @@ import {
   CheckCircle2,
   ShieldCheck,
   Search,
+  Link2,
+  Zap,
 } from "lucide-react";
 import Avatar from "@/components/board/Avatar";
 import CheckoutPanel from "@/components/board/CheckoutPanel";
@@ -230,6 +232,72 @@ export default function BoardPage() {
     setBidOpen(true);
   }, [fastUrl, category, snapshot]);
 
+  const [fastLoading, setFastLoading] = useState(false);
+  const [rowOutbidLoading, setRowOutbidLoading] = useState<string | null>(null);
+  const [copiedRow, setCopiedRow] = useState<string | null>(null);
+
+  const handleRowCopyLink = (domain: string) => {
+    if (typeof window === "undefined" || !navigator.clipboard) return;
+    const url = `${window.location.origin}/?highlight=${encodeURIComponent(domain)}`;
+    navigator.clipboard.writeText(url);
+    setCopiedRow(domain);
+    setTimeout(() => setCopiedRow(null), 2000);
+  };
+
+  const handleDirectFastCheckout = useCallback(async (targetRaw?: string, e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const raw = (targetRaw ?? fastUrl).trim();
+    if (!raw) {
+      setFastError("Please enter your website address.");
+      return;
+    }
+    const check = checkListingUrl(raw);
+    if (!check.ok) {
+      setFastError(check.error || "Please enter a valid website URL.");
+      return;
+    }
+    setFastError(null);
+    setFastLoading(true);
+
+    try {
+      const brand = deriveBrandName(raw);
+      const minLead = snapshot ? snapshot.leadCostCents : RULES.minBidCents;
+      const idempotencyKey = `bid-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+      const ai = await api.generateAiTagline(raw).catch(() => null);
+      const finalTagline = ai?.tagline || `${brand} official digital presence`;
+      const finalCategory = (ai?.category || category || "Marketing") as BoardCategory;
+
+      const res = await api.purchaseBid(
+        {
+          newListing: {
+            url: check.url,
+            name: brand,
+            tagline: finalTagline,
+            category: finalCategory,
+          },
+          amountCents: minLead,
+          acceptedTerms: true,
+        },
+        idempotencyKey
+      );
+
+      if (res.ok && res.checkoutUrl) {
+        window.location.href = res.checkoutUrl;
+        return;
+      }
+
+      if (!res.ok) {
+        setFastError(res.error || "Could not start checkout. Please try again.");
+      }
+    } catch (err) {
+      console.error("Direct fast bid error:", err);
+      setFastError("Could not start checkout session.");
+    } finally {
+      setFastLoading(false);
+    }
+  }, [fastUrl, category, snapshot]);
+
   useEffect(() => {
     const handleOpen = () => openBidNew();
     window.addEventListener("adv:open-bid", handleOpen);
@@ -393,6 +461,31 @@ export default function BoardPage() {
     setBidOpen(true);
   }
 
+  const handleDirectRowOutbid = useCallback(async (row: BoardRow) => {
+    setRowOutbidLoading(row.listing.domain);
+    try {
+      const amountCents = row.climbCostCents || RULES.minBidCents;
+      const idempotencyKey = `bid-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const res = await api.purchaseBid(
+        {
+          domain: row.listing.domain,
+          amountCents,
+          acceptedTerms: true,
+        },
+        idempotencyKey
+      );
+      if (res.ok && res.checkoutUrl) {
+        window.location.href = res.checkoutUrl;
+        return;
+      }
+      openBidExisting(row);
+    } catch {
+      openBidExisting(row);
+    } finally {
+      setRowOutbidLoading(null);
+    }
+  }, []);
+
   function handleFormChange(field: keyof Fields, val: string) {
     setListingForm((prev) => {
       const next = { ...prev, [field]: val };
@@ -494,7 +587,7 @@ export default function BoardPage() {
 
           {/* 1-Click Hero Fast-Bid Bar */}
           <form
-            onSubmit={handleFastClaim}
+            onSubmit={(e) => handleDirectFastCheckout(undefined, e)}
             className="mt-5 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-1.5 rounded-2xl border border-accent/40 bg-surface/90 shadow-2xl shadow-accent/10 backdrop-blur-md"
           >
             <div className="flex items-center gap-2.5 flex-1 px-3 py-2">
@@ -511,13 +604,28 @@ export default function BoardPage() {
                 className="w-full bg-transparent text-sm sm:text-base font-medium text-fg placeholder:text-muted/70 focus:outline-none"
               />
             </div>
-            <button
-              type="submit"
-              className="flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-extrabold text-accent-ink hover:bg-accent-hover transition-all shadow-md shadow-accent/20 shrink-0 cursor-pointer"
-            >
-              <Crown className="h-4 w-4" />
-              <span>Claim Rank #1 {snapshot ? `(${formatUsd(snapshot.leadCostCents)})` : ""}</span>
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="submit"
+                disabled={fastLoading}
+                className="flex items-center justify-center gap-1.5 rounded-xl bg-accent px-5 py-3 text-sm font-extrabold text-accent-ink hover:bg-accent-hover transition-all shadow-md shadow-accent/20 cursor-pointer disabled:opacity-50"
+              >
+                <Zap className="h-4 w-4" />
+                <span>
+                  {fastLoading
+                    ? "Starting Checkout..."
+                    : `1-Click Claim #1 ${snapshot ? `(${formatUsd(snapshot.leadCostCents)})` : ""}`}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={handleFastClaim}
+                title="Customize tagline, category, or amount before bidding"
+                className="rounded-xl border border-line bg-surface/80 px-3.5 py-3 text-xs font-semibold text-muted hover:border-line-strong hover:text-fg transition-all cursor-pointer"
+              >
+                Customize
+              </button>
+            </div>
           </form>
           {fastError && (
             <p className="mt-2 text-xs font-semibold text-danger">{fastError}</p>
@@ -758,30 +866,44 @@ export default function BoardPage() {
               <p className="mt-1 text-xs text-muted max-w-md">
                 Be the first to claim this placement and take the #1 rank today.
               </p>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  setFastUrl(searchQuery);
-                  const brand = deriveBrandName(searchQuery);
-                  setIsNew(true);
-                  setTargetDomain(null);
-                  setListingForm({
-                    url: searchQuery.startsWith("http") ? searchQuery : `https://${searchQuery}`,
-                    name: brand,
-                    tagline: "",
-                    category: category ?? "Marketing",
-                  });
-                  setFormErrors({});
-                  const minLead = snapshot ? snapshot.leadCostCents : RULES.minBidCents;
-                  setBidAmountCents(Math.max(minLead, 1000));
-                  setCustomAmountStr("");
-                  setBidOpen(true);
-                }}
-                className="mt-4 text-xs font-bold"
-              >
-                Claim Rank #1 with {searchQuery}
-              </Button>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={fastLoading}
+                  onClick={() => handleDirectFastCheckout(searchQuery)}
+                  className="text-xs font-bold flex items-center gap-1.5"
+                >
+                  <Zap className="h-3.5 w-3.5 text-accent" />
+                  {fastLoading
+                    ? "Starting..."
+                    : `1-Click Claim #1 ${snapshot ? `(${formatUsd(snapshot.leadCostCents)})` : ""}`}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setFastUrl(searchQuery);
+                    const brand = deriveBrandName(searchQuery);
+                    setIsNew(true);
+                    setTargetDomain(null);
+                    setListingForm({
+                      url: searchQuery.startsWith("http") ? searchQuery : `https://${searchQuery}`,
+                      name: brand,
+                      tagline: "",
+                      category: category ?? "Marketing",
+                    });
+                    setFormErrors({});
+                    const minLead = snapshot ? snapshot.leadCostCents : RULES.minBidCents;
+                    setBidAmountCents(Math.max(minLead, 1000));
+                    setCustomAmountStr("");
+                    setBidOpen(true);
+                  }}
+                  className="text-xs font-semibold"
+                >
+                  Customize
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
@@ -879,29 +1001,61 @@ export default function BoardPage() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
+                          {/* 1-Click Direct Copy Link */}
+                          <button
+                            type="button"
+                            onClick={() => handleRowCopyLink(row.listing.domain)}
+                            aria-label={`Copy link to ${row.listing.name}`}
+                            title="1-Click copy share link"
+                            className="rounded-xl border border-line p-2 text-muted hover:border-accent hover:text-accent transition-colors"
+                          >
+                            {copiedRow === row.listing.domain ? (
+                              <span className="text-[10px] font-bold text-accent px-0.5">Copied!</span>
+                            ) : (
+                              <Link2 className="h-4 w-4" />
+                            )}
+                          </button>
+
+                          {/* Share Card Modal */}
                           <button
                             type="button"
                             onClick={() =>
                               setShareTarget({ listing: row.listing, rank: row.rank })
                             }
                             aria-label={`Share ${row.listing.name}`}
-                            className="rounded-xl border border-line p-2 text-muted hover:border-line-strong hover:text-fg"
+                            title="Share card & badge embed"
+                            className="rounded-xl border border-line p-2 text-muted hover:border-line-strong hover:text-fg transition-colors"
                           >
                             <Share2 className="h-4 w-4" />
                           </button>
 
+                          {/* 1-Click Fast Outbid */}
                           <Button
                             variant={isTop1 ? "secondary" : "primary"}
                             size="sm"
-                            onClick={() => openBidExisting(row)}
+                            disabled={rowOutbidLoading === row.listing.domain}
+                            onClick={() => handleDirectRowOutbid(row)}
+                            title="1-Click checkout to pass this competitor"
                             className="flex items-center gap-1 whitespace-nowrap text-xs font-semibold"
                           >
-                            <ChevronUp className="h-3.5 w-3.5" />
-                            {row.climbCostCents
-                              ? `Pass for ${formatUsd(row.climbCostCents)}`
-                              : "Boost Total"}
+                            <Zap className="h-3.5 w-3.5 text-accent" />
+                            {rowOutbidLoading === row.listing.domain
+                              ? "Starting..."
+                              : row.climbCostCents
+                              ? `1-Click Pass (${formatUsd(row.climbCostCents)})`
+                              : "1-Click Boost"}
                           </Button>
+
+                          {/* Custom Amount Option */}
+                          <button
+                            type="button"
+                            onClick={() => openBidExisting(row)}
+                            title="Customize bid amount"
+                            className="rounded-xl border border-line/70 bg-surface/60 p-2 text-muted hover:border-line-strong hover:text-fg text-xs transition-colors"
+                          >
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       </div>
                     </div>
